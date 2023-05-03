@@ -1,13 +1,31 @@
 import json
-import socket
 import os
 from datetime import datetime
+from contextlib import contextmanager
+from kazoo.client import KazooClient
 
-class ZKNamespaces:
+@contextmanager
+def zkdb(**kwargs):
+    zk = KazooClient(**kwargs)
+    db = ZKDatabase(zk)
+    zk.start()
+    try:
+        yield db
+    finally:
+        zk.stop()
+        zk.close()
+
+class ZKDatabase:
+    """
+    Manage zookeeper database
+    """
     def __init__(self, zk):
         self.zk = zk
     
-    def register_pipeline(self, pipeline_id, pipeline_module_name, pipeline_info):
+    def register_pipeline(self, pipeline_id:str, pipeline_module_name:str, pipeline_info:str):
+        """
+        Register a pipeline
+        """
         self.zk.ensure_path("/pipelines")
         pipeline_path = f"/pipelines/{pipeline_id}"
         if self.zk.exists(pipeline_path):
@@ -17,7 +35,10 @@ class ZKNamespaces:
         self.zk.create(f"{pipeline_path}/info", json.dumps(pipeline_info).encode("utf-8"))
         self.zk.create(f"{pipeline_path}/module", pipeline_module_name.encode("utf-8"))
     
-    def get_pipelines(self):
+    def get_pipelines(self) -> dict:
+        """
+        Get information for all pipelines
+        """
         if not self.zk.exists("/pipelines"):
             return {}
         pipeline_dict = {}
@@ -25,7 +46,10 @@ class ZKNamespaces:
             pipeline_dict[pipeline_id] = self.get_pipeline(pipeline_id)
         return pipeline_dict
 
-    def get_executor(self, pipeline_id, executor_id):
+    def get_executor(self, pipeline_id:str, executor_id:str) -> dict:
+        """
+        Get information for an executor
+        """
         executor_path = f"/pipelines/{pipeline_id}/executors/{executor_id}"
         if not self.zk.exists(executor_path):
             return None
@@ -38,12 +62,18 @@ class ZKNamespaces:
             "stop": stop
         }
 
-    def get_executor_stop(self, pipeline_id, executor_id):
+    def get_executor_stop(self, pipeline_id:str, executor_id:str) -> bool:
+        """
+        Check if stop is requested for an executor
+        """
         executor_path = f"/pipelines/{pipeline_id}/executors/{executor_id}"
         v, _ = self.zk.get(f"{executor_path}/stop")
         return v == b'1'
 
-    def get_pipeline(self, pipeline_id):
+    def get_pipeline(self, pipeline_id:str) -> dict:
+        """
+        Get information for a pipeline
+        """
         pipeline_path = f"/pipelines/{pipeline_id}"
         if not self.zk.exists(pipeline_path):
             return None
@@ -66,7 +96,18 @@ class ZKNamespaces:
         }
 
 
-    def register_executor(self, pipeline_id, executor_id, *, docker_host_name, docker_container_name, worker_count):
+    def register_executor(
+        self, 
+        pipeline_id:str, 
+        executor_id:str, 
+        *, 
+        docker_host_name:str, 
+        docker_container_name:str, 
+        worker_count:int
+    ):
+        """
+        Register an executor
+        """
         if not self.zk.exists(f"/pipelines/{pipeline_id}"):
             raise Exception(f"Pipeline {pipeline_id} does not exist!")
     
@@ -89,16 +130,37 @@ class ZKNamespaces:
         self.zk.create(f"{executor_path}/info", json.dumps(executor_info).encode("utf-8"))
         self.zk.create(f"{executor_path}/stop", b'0')
 
-    def watch_executor(self, pipeline_id, executor_id, callback):
-        _, _ = self.zk.get(f"/pipelines/{pipeline_id}/executors/{executor_id}/stop", callback)
+    def watch_executor(self, pipeline_id:str, executor_id:str, callback):
+        """
+        Watch if stop is requested on an executor
+        """
+        def watcher(event):
+            if event.type == "CHANGED":
+                stop = self.get_executor_stop(pipeline_id, executor_id)
+                if stop:
+                    callback()
+                else:
+                    # keep watching...
+                    self.watch_executor(pipeline_id, executor_id, callback)
+            else:
+                # keep watching...
+                self.watch_executor(pipeline_id, executor_id, callback)
 
-    def unregister_executor(self, pipeline_id, executor_id):
+        self.zk.get(f"/pipelines/{pipeline_id}/executors/{executor_id}/stop", watcher)
+
+    def unregister_executor(self, pipeline_id:str, executor_id:str):
+        """
+        Unregister an executor
+        """
         executor_path = f"/pipelines/{pipeline_id}/executors/{executor_id}"
         if not self.zk.exists(executor_path):
             raise Exception(f"Executor {executor_id} does not exist!")
         self.zk.delete(executor_path, recursive=True)
 
-    def stop_executor(self, pipeline_id, executor_id):
+    def stop_executor(self, pipeline_id:str, executor_id:str):
+        """
+        Request stop of an executor.
+        """
         executor_path = f"/pipelines/{pipeline_id}/executors/{executor_id}"
         if not self.zk.exists(executor_path):
             raise Exception(f"Executor {executor_id} does not exist!")

@@ -10,8 +10,8 @@ with open(os.path.join(HERE, "README.md"), "r") as f:
 
 # This call to setup() does all the work
 setup(
-    name="firebird",
-    version="0.0.1",
+    name="pyfirebird",
+    version="0.0.8",
     description="Streaming Data Processing Framework",
     long_description=README,
     long_description_content_type="text/markdown",
@@ -28,7 +28,8 @@ setup(
     install_requires=["pika", "kazoo", "docker", "paramiko"],
     entry_points={
         "console_scripts": [
-            "firebird=firebird.cmd_tools.firebird:main",
+            "pipeline=firebird.cmd_tools.pipeline:main",
+            "executor=firebird.cmd_tools.executor:main",
         ]
     },
 )

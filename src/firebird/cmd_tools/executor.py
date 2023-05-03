@@ -59,9 +59,9 @@ from multiprocessing import Process, Value
 from collections import deque
 import socket
 import os
+import sys
 from uuid import uuid4
-from kazoo.client import KazooClient
-from firebird.tools.zk_path import ZKNamespaces
+from firebird import zkdb
 
 from firebird.rabbitmq import get_connection, RabbitMQ
 
@@ -102,9 +102,13 @@ def worker_main(config:dict, pipeline_module_name:str, pipeline_id:str, node_id,
     # otherwise, this is for message processing
     pipeline.message_loop(quit_requested)
 
-def main(config):
+def main():
     parser = argparse.ArgumentParser(
         description='Pipeline executor'
+    )
+    parser.add_argument(
+        "-cd", "--config-dir", type=str, required=False,
+        help="Configuration directory"
     )
     parser.add_argument(
         "-pid", "--pipeline-id", type=str, required=True, help="pipeline ID"
@@ -121,6 +125,15 @@ def main(config):
     )
     args = parser.parse_args()
 
+    config_dir = args.config_dir if args.config_dir else os.path.expanduser("~/.firebird")
+    config_filename = os.path.join(config_dir, "config.json")
+    if not os.path.isfile(config_filename):
+        print(f"Unable to find config file from {config_filename}")
+        sys.exit(1)
+
+    with open(config_filename, "rt") as f:
+        config = json.load(f)
+
     execute_pipeline(
         config, 
         pipeline_id=args.pipeline_id, 
@@ -129,37 +142,37 @@ def main(config):
         docker_container_name=args.docker_container_name
     )
 
-def execute_pipeline(config:dict, *, pipeline_id:str, worker_count:int, docker_host_name:str, docker_container_name:str):
+def execute_pipeline(
+        config:dict, 
+        *, 
+        pipeline_id:str, 
+        worker_count:int, 
+        docker_host_name:str, 
+        docker_container_name:str
+    ):
     logger.info(f"execute_pipeline: enter")
     logger.info(f"execute_pipeline: pipeline_id={pipeline_id}, worker_count={worker_count}, docker_host_name={docker_host_name}, docker_container_name={docker_container_name}")
-    zk = KazooClient(**config['zookeeper'])
-    zk_namespace = ZKNamespaces(zk)
-    zk.start()
-    try:
-        pipeline = zk_namespace.get_pipeline(pipeline_id)
+    zk_config = config['zookeeper']
+
+    with zkdb(**zk_config) as db:
+        pipeline = db.get_pipeline(pipeline_id)
         pipeline_module_name = pipeline['module']
-    finally:
-        zk.stop()
-    logger.info(f"execute_pipeline: pipeline_module_name={pipeline_module_name}")
+        logger.info(f"execute_pipeline: pipeline_module_name={pipeline_module_name}")
 
-    # try to import the pipeline
-    pipeline = importlib.import_module(pipeline_module_name).get_pipeline(None)
-    logger.info(f"execute_pipeline: pipeline acquired")
+        # try to import the pipeline
+        pipeline = importlib.import_module(pipeline_module_name).get_pipeline(None)
+        logger.info(f"execute_pipeline: pipeline acquired")
 
-    executor_id = str(uuid4())
-    logger.info(f"execute_pipeline: executor_id={executor_id}")
-    zk.start()
-    try:
-        zk_namespace.register_executor(
+        executor_id = str(uuid4())
+        logger.info(f"execute_pipeline: executor_id={executor_id}")
+        db.register_executor(
             pipeline_id, 
             executor_id, 
             docker_host_name=docker_host_name, 
             docker_container_name=docker_container_name, 
             worker_count=worker_count
         )
-    finally:
-        zk.stop()
-    logger.info(f"execute_pipeline: executor_id registered")
+        logger.info(f"execute_pipeline: executor_id registered")
 
     active_processes = deque()
     terminated_processes = deque()
@@ -183,47 +196,29 @@ def execute_pipeline(config:dict, *, pipeline_id:str, worker_count:int, docker_h
 
     logger.info(f"execute_pipeline: all worker started")
 
-    ctx = {
-        "stop_requested": False
-    }
-    def watch_stop(event):
-        if event.type == "CHANGED":
-            stop = zk_namespace.get_executor_stop(pipeline_id, executor_id)
-            if stop:
-                logger.info(f"execute_pipeline: stop requested!")
-                __APP_CONTEXT['quit_requested'].value = True
-                ctx["stop_requested"] = True
-            else:
-                zk_namespace.watch_executor(pipeline_id, executor_id, watch_stop)
-                logger.info(f"execute_pipeline: suspecious stop change!")
-        else:
-            # keep monitor if we encounter non CHANGED event
-            zk_namespace.watch_executor(pipeline_id, executor_id, watch_stop)
+    def watch_stop():
+        logger.info(f"execute_pipeline: stop requested!")
+        __APP_CONTEXT['quit_requested'].value = True
 
-    zk.start()
-    zk_namespace.watch_executor(pipeline_id, executor_id, watch_stop)
+    
+    with zkdb(**zk_config) as db:
+        db.watch_executor(pipeline_id, executor_id, watch_stop)
+        while True:
+            if len(active_processes) == 0:
+                break
+            tmp = active_processes
+            active_processes = deque()
+            for p in tmp:
+                if p.is_alive():
+                    active_processes.append(p)
+                else:
+                    p.join()
+                    logger.info(f"execute_pipeline: pid={p.pid} is terminated!")
+                    terminated_processes.append(p)
+            time.sleep(1)
+        logger.info(f"execute_pipeline: all worker stopped")
+        db.unregister_executor(pipeline_id, executor_id)
 
-    while True:
-        if len(active_processes) == 0:
-            break
-        tmp = active_processes
-        active_processes = deque()
-        for p in tmp:
-            if p.is_alive():
-                active_processes.append(p)
-            else:
-                p.join()
-                logger.info(f"execute_pipeline: pid={p.pid} is terminated!")
-                terminated_processes.append(p)
-        time.sleep(1)
-    zk.stop()
-
-    logger.info(f"execute_pipeline: all worker stopped")
-    zk.start()
-    try:
-        zk_namespace.unregister_executor(pipeline_id, executor_id)
-    finally:
-        zk.stop()
     logger.info(f"execute_pipeline: executor {executor_id} unregistered")
     logger.info(f"execute_pipeline: exit")
 
