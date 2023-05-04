@@ -1,0 +1,18 @@
+version: '3.9'
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    hostname: rabbitmq
+    container_name: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: stonezhong
+      RABBITMQ_DEFAULT_PASS: changeme
+  zookeeper:
+    image: zookeeper:3.8.1
+    hostname: zookeeper
+    container_name: zookeeper
+networks:
+  default:
+    name: streaming
+    external: true
+    

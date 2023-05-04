@@ -1,0 +1,13 @@
+{
+    "zookeeper": {
+        "hosts": "zookeeper:2181"
+    },
+    "rabbitmq": {
+        "username": "stonezhong",
+        "password": "changeme",
+        "host": "rabbitmq",
+        "port": 5672,
+        "heartbeat": 300
+    },
+    "docker_handler_module": "docker_handler"
+}

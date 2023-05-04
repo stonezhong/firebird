@@ -1,0 +1,17 @@
+version: '3.9'
+services:
+  app:
+    build: ./
+    image: streaming-image
+    # user: "1000"
+    hostname: console
+    container_name: console
+    # volumes:
+    #   - $ENV_HOME/:/mnt/DATA_DISK/mordor
+    # environment:
+    #   ENV_HOME: /mnt/DATA_DISK/mordor
+    #   PYTHONPATH: /mnt/DATA_DISK/mordor/apps/pulse-streaming/current
+networks:
+  default:
+    name: streaming
+    external: true

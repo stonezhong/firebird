@@ -1,0 +1,4 @@
+Host devbox
+    HostName 10.0.0.2
+    User stonezhong
+    IdentityFile ~/.ssh/keys/devbox
