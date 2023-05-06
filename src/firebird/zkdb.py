@@ -146,7 +146,10 @@ class ZKDatabase:
                 # keep watching...
                 self.watch_executor(pipeline_id, executor_id, callback)
 
-        self.zk.get(f"/pipelines/{pipeline_id}/executors/{executor_id}/stop", watcher)
+        stop_path = f"/pipelines/{pipeline_id}/executors/{executor_id}/stop"
+        if self.zk.exists(stop_path):
+            self.zk.get(stop_path, watcher)
+        
 
     def unregister_executor(self, pipeline_id:str, executor_id:str):
         """
