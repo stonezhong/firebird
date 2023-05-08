@@ -12,6 +12,13 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from pathlib import Path
 
+### load config from disk
+import os
+import json
+with open(os.path.join(os.path.expanduser("~/.firebird"), "config.json"), "rt") as f:
+    FIREBIRD_CONFIG = json.load(f)
+MYSQL_CONFIG = FIREBIRD_CONFIG['mysql']
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -76,11 +83,17 @@ WSGI_APPLICATION = 'firebirdconsole.firebirdconsole.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE'  : 'django.db.backends.mysql',
+        'NAME'    : MYSQL_CONFIG['db_name'],
+        'USER'    : MYSQL_CONFIG['username'],
+        'PASSWORD': MYSQL_CONFIG['password'],
+        'HOST'    : MYSQL_CONFIG['server'],
+        'PORT'    : MYSQL_CONFIG.get('port', 3306),
+        'OPTIONS': {
+            'sql_mode': 'STRICT_TRANS_TABLES',
+        },
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators

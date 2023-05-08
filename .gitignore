@@ -3,4 +3,4 @@ build/
 src/pyfirebird.egg-info/
 dist/
 **/*/__pycache__/
-
+src/firebirdconsole/node_modules/
