@@ -70,10 +70,8 @@ class Node(ABC):
         ret = {
             "id": self.id,
             "description": self.description,
-            "ports": {}
+            "ports": [port.to_json() for port in self._ports_dict.values()]
         }
-        for port_id, port in self._ports_dict.items():
-            ret["ports"][port_id] = port.to_json()
         return ret
     
     def __getitem__(self, port_id:str) -> Optional["Port"]:
@@ -300,10 +298,8 @@ class Pipeline:
         ret = {
             "id": self.id,
             "description": self.description,
-            "nodes": {}
+            "nodes": [node.to_json() for node in self._node_dict.values()]
         }
-        for node_id, node in self._node_dict.items():
-            ret["nodes"][node_id] = node.to_json()
         return ret
 
     def message_loop(self, quit_requested):

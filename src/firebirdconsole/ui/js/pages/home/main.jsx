@@ -6,8 +6,13 @@ import Row from 'react-bootstrap/Row';
 
 import { ApplicationContainer } from '/components/business/appbase';
 
+import BootstrapTable from 'react-bootstrap-table-next';
+import filterFactory, { textFilter, Comparator } from 'react-bootstrap-table2-filter';
+
 import {ApplicationPage} from '/common_lib';
 import {list_pipelines} from '/apis';
+
+import './main.scss';
 
 /*********************************************************************************
  * Purpose: Page to view an application
@@ -19,12 +24,53 @@ import {list_pipelines} from '/apis';
  */
 
 class HomeApplicationPage extends React.Component {
+
+    state = {
+        pipelines: this.props.pipelines
+    };
+
     render() {
         return (
             <>
                 <Row>
                     <Col>
-                        <h1>Home Page</h1>
+                        <h1>Pipelines</h1>
+                    </Col>
+                </Row>
+                <Row>
+                    <Col>
+                        <BootstrapTable
+                            keyField="info.id"
+                            data={this.state.pipelines}
+                            filter={ filterFactory() }
+                            bordered={false}
+                            bootstrap4
+                            columns={[
+                                {
+                                    dataField: "info.id",
+                                    text: "ID",
+                                    isDummyField: true,
+                                    formatter: (cellContent, pipeline) => <a href={`pipelines/${pipeline.info.id}`} target="_blank">{pipeline.info.id}</a>,
+                                    headerStyle: {
+                                        width: "500px",
+                                    },
+                                },
+                                {
+                                    dataField: "module",
+                                    text: "Module",
+                                    headerStyle: {
+                                        width: "500px",
+                                    },
+                                },
+                                {
+                                    dataField: "info.description",
+                                    text: "Description",
+                                },
+                            ]}
+                            classes="table-sm pipeline-table"
+                            headerClasses="pipeline-table-header"
+                        >
+                        </BootstrapTable>
                     </Col>
                 </Row>
             </>
@@ -36,7 +82,6 @@ $(async function() {
     const page = new ApplicationPage();
 
     const pipelines = await list_pipelines();
-    console.log(pipelines);
 
     ReactDOM.render(
         <ApplicationContainer
@@ -45,7 +90,7 @@ $(async function() {
             init_menu_key={page.init_menu_key}
             app_context={page.app_context}
         >
-            <HomeApplicationPage />
+            <HomeApplicationPage pipelines={pipelines.pipelines}/>
         </ApplicationContainer>,
         document.getElementById('app')
     );

@@ -1,0 +1,10 @@
+tr.pipeline-table-header {
+    background-color: black;
+    color: white;
+}
+
+table.pipeline-table {
+    & > tbody {
+        tr:nth-child(even) {background-color: white};
+    }
+}

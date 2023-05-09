@@ -36,6 +36,7 @@ module.exports = (env, argv) => {
         },
         entry: {
             "home"              : '/pages/home/main.jsx',
+            "pipeline"          : '/pages/pipeline/main.jsx',
         },
         output: {
             path: path.resolve("ui", "static", "js-bundle"),

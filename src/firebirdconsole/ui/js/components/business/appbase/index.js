@@ -133,7 +133,7 @@ export class ApplicationContainer extends React.Component {
                     {
                         React.Children.map(
                             this.props.children, 
-                            child => React.cloneElement(child, props, null)
+                            child => React.cloneElement(child, {...props, ...child.props}, null)
                         )
                     }
                 </Container>

@@ -1,2 +1,2 @@
-from .main import list_pipelines
+from .main import list_pipelines, get_pipeline
 

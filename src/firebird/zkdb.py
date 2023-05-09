@@ -68,6 +68,7 @@ class ZKDatabase:
             return None
         v, _ = self.zk.get(f"{executor_path}/info")
         executor_info = json.loads(v.decode("utf-8"))
+        executor_info['id'] = executor_id
         v, _ = self.zk.get(f"{executor_path}/stop")
         stop = v == b'1'
         return {
@@ -97,10 +98,11 @@ class ZKDatabase:
         module = v.decode("utf-8")
 
         executor_ids_path = f"/pipelines/{pipeline_id}/executors"
-        executors = {}
+        executors = []
         if self.zk.exists(executor_ids_path):
-            for executor_id in self.zk.get_children(executor_ids_path):
-                executors[executor_id] = self.get_executor(pipeline_id, executor_id)
+            executors = [
+                self.get_executor(pipeline_id, executor_id) for executor_id in self.zk.get_children(executor_ids_path)
+            ]
         
         return {
             "info": pipeline_info,

@@ -40,9 +40,9 @@ def list_command(config):
             print("    executors: None")
         else:
             print("    executors:")
-            for executor_id, executor in pipeline["executors"].items():
+            for executor in pipeline["executors"]:
                 executor_info = executor["info"]
-                print(f"        {executor_id}:")
+                print(f"        {executor_info['id']}:")
                 print(f"            docker_host_name      = {executor_info['docker_host_name']}")
                 print(f"            docker_container_name = {executor_info['docker_container_name']}")
                 print(f"            worker_count          = {executor_info['worker_count']}")

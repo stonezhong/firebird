@@ -4,5 +4,8 @@ from .views import apis
 
 urlpatterns = [
     path('', views.home, name='home'),
-    path('apis/list_pipelines', apis.list_pipelines, name='api.list_pipelines'),
+    path('pipelines/<str:pipeline_id>', views.pipeline, name='pipeline'),
+
+    path('apis/pipelines', apis.list_pipelines, name='api.list_pipelines'),
+    path('apis/pipelines/<str:pipeline_id>', apis.get_pipeline, name='api.get_pipeline'),
 ]
