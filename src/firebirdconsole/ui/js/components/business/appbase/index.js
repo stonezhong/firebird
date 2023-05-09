@@ -32,7 +32,7 @@ class GlobalHeader extends React.Component {
             <Container fluid>
                 <Navbar.Brand href="#">
                     <img
-                        src="/static/images/logo.png"
+                        src="/static/images/logo.jpeg"
                         alt="Logo"
                         className="d-inline-block align-top"
                     />
