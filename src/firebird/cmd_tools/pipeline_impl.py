@@ -25,12 +25,16 @@ def register_command(config:dict, pipeline_module_name:str):
     with zkdb(**config['zookeeper']) as db:
         db.register_pipeline(pipeline.id, pipeline_module_name, pipeline_info)
 
+def unregister_command(config:dict, pipeline_id:str):
+    with zkdb(**config['zookeeper']) as db:
+        db.unregister_pipeline(pipeline_id)
+
 def list_command(config):
     with zkdb(**config['zookeeper']) as db:
-        pipeline_dict = db.get_pipelines()
+        pipelines = db.get_pipelines()
 
-    for pipeline_id, pipeline in pipeline_dict.items():
-        print(f"{pipeline_id}:")
+    for pipeline in pipelines:
+        print(f"{pipeline['info']['id']}:")
         print(f"    module: {pipeline['module']}")
         if len(pipeline["executors"]) == 0:
             print("    executors: None")

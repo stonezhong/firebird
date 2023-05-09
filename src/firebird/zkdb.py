@@ -34,17 +34,30 @@ class ZKDatabase:
         self.zk.ensure_path(pipeline_path)
         self.zk.create(f"{pipeline_path}/info", json.dumps(pipeline_info).encode("utf-8"))
         self.zk.create(f"{pipeline_path}/module", pipeline_module_name.encode("utf-8"))
-    
+
+    def unregister_pipeline(self, pipeline_id:str):
+        """
+        Unregister a pipeline
+        """
+        pipeline_path = f"/pipelines/{pipeline_id}"
+        if not self.zk.exists(pipeline_path):
+            raise Exception(f"Pipeline {pipeline_id} is not yet registered!")
+        
+        executors_path = f"{pipeline_path}/executors"
+        if self.zk.exists(executors_path) and len(self.zk.get_children(executors_path)) > 0:
+            raise Exception(f"Pipeline {pipeline_id} has executors!")
+        
+        self.zk.delete(pipeline_path, recursive=True)
+
     def get_pipelines(self) -> dict:
         """
         Get information for all pipelines
         """
         if not self.zk.exists("/pipelines"):
-            return {}
-        pipeline_dict = {}
-        for pipeline_id in self.zk.get_children("/pipelines"):
-            pipeline_dict[pipeline_id] = self.get_pipeline(pipeline_id)
-        return pipeline_dict
+            return []
+        return [
+            self.get_pipeline(pipeline_id) for pipeline_id in self.zk.get_children("/pipelines")
+        ]
 
     def get_executor(self, pipeline_id:str, executor_id:str) -> dict:
         """

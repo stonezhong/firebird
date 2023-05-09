@@ -7,6 +7,7 @@ import Row from 'react-bootstrap/Row';
 import { ApplicationContainer } from '/components/business/appbase';
 
 import {ApplicationPage} from '/common_lib';
+import {list_pipelines} from '/apis';
 
 /*********************************************************************************
  * Purpose: Page to view an application
@@ -31,8 +32,11 @@ class HomeApplicationPage extends React.Component {
     }
 }
 
-$(function() {
+$(async function() {
     const page = new ApplicationPage();
+
+    const pipelines = await list_pipelines();
+    console.log(pipelines);
 
     ReactDOM.render(
         <ApplicationContainer

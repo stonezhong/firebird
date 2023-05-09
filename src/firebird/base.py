@@ -42,7 +42,8 @@ class Node(ABC):
         id:str,
         pipeline:"Pipeline", 
         input_port_ids:List[str]=[DEFAULT_INPUT_PORT_ID], 
-        output_port_ids:List[str]=[DEFAULT_OUTPUT_PORT_ID]
+        output_port_ids:List[str]=[DEFAULT_OUTPUT_PORT_ID],
+        description:str="",
     ):
         # validate input port ids and output port ids
         all_port_id_set = set(input_port_ids + output_port_ids)
@@ -52,6 +53,7 @@ class Node(ABC):
         self._ports_dict:Dict[str, "Port"] = {}
         self.id = id
         self.pipeline = pipeline
+        self.description = description
         
         self._input_port_ids = tuple(input_port_ids)
         self._output_port_ids = tuple(output_port_ids)
@@ -66,6 +68,8 @@ class Node(ABC):
     
     def to_json(self):
         ret = {
+            "id": self.id,
+            "description": self.description,
             "ports": {}
         }
         for port_id, port in self._ports_dict.items():
@@ -164,18 +168,20 @@ class Sink(Node):
         *,
         id:str,
         pipeline:"Pipeline", 
-        input_port_ids:List[str]=[DEFAULT_INPUT_PORT_ID]
+        input_port_ids:List[str]=[DEFAULT_INPUT_PORT_ID],
+        description:str="",
     ):
-        super().__init__(id=id, pipeline=pipeline, input_port_ids=input_port_ids, output_port_ids=[])
+        super().__init__(id=id, pipeline=pipeline, input_port_ids=input_port_ids, output_port_ids=[], description=description)
 
 class Generator(Node):
     def __init__(self, 
         *,
         id:str,
         pipeline:"Pipeline", 
-        output_port_ids:List[str]=[DEFAULT_OUTPUT_PORT_ID]
+        output_port_ids:List[str]=[DEFAULT_OUTPUT_PORT_ID],
+        description:str="",
     ):
-        super().__init__(id=id, pipeline=pipeline, input_port_ids=[], output_port_ids=output_port_ids)
+        super().__init__(id=id, pipeline=pipeline, input_port_ids=[], output_port_ids=output_port_ids, description=description)
 
     def on_message(self, name:str, data:Any):
         raise Exception("Generator cannot process data")
@@ -284,13 +290,16 @@ class Port:
 
     
 class Pipeline:
-    def __init__(self, *, id:str, mq:RabbitMQ):
+    def __init__(self, *, id:str, mq:RabbitMQ, description:str=""):
         self.id = id
+        self.description = description
         self.mq = mq
         self._node_dict:Dict[str, Node] = {}
 
     def to_json(self):
         ret = {
+            "id": self.id,
+            "description": self.description,
             "nodes": {}
         }
         for node_id, node in self._node_dict.items():

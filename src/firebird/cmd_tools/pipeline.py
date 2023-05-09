@@ -38,7 +38,7 @@ def main():
     )
     parser.add_argument(
         "action", type=str, help="Specify action",
-        choices=['register', 'list', 'execute', 'stop'],
+        choices=['register', 'unregister', 'list', 'execute', 'stop'],
         nargs=1
     )
     parser.add_argument(
@@ -91,6 +91,8 @@ def main():
 
     if action == "register":
         impl.register_command(config, args.pipeline_module_name)
+    if action == "unregister":
+        impl.unregister_command(config, args.pipeline_id)
     elif action == "list":
         impl.list_command(config)
     elif action == "execute":
