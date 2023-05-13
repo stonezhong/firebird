@@ -328,7 +328,7 @@ class Port:
 
     
 class Pipeline:
-    def __init__(self, *, id:str, mq:RabbitMQ, title:str="", description:str=""):
+    def __init__(self, *, id:str, mq:Optional[RabbitMQ], title:str="", description:str=""):
         self._id:str = id
         self._description:str = description
         if title:
@@ -358,6 +358,10 @@ class Pipeline:
     @property
     def title(self) -> str:
         return self._title
+
+    @property
+    def mq(self) -> Optional[RabbitMQ]:
+        return self._mq
 
     def message_loop(self, quit_requested: Synchronized):
         self.mq.consume(self.on_message, quit_requested)

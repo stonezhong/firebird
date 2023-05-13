@@ -11,7 +11,7 @@ with open(os.path.join(HERE, "README.md"), "r") as f:
 # This call to setup() does all the work
 setup(
     name="pyfirebird",
-    version="0.0.43",
+    version="0.0.44",
     description="Streaming Data Processing Framework",
     long_description=README,
     long_description_content_type="text/markdown",
