@@ -11,11 +11,11 @@ class MyGenerator(Generator):
             time.sleep(1)
 
 class MySink(Sink):
-    def on_message(self, name:str, data:Any):
+    def on_message(self, port_id:str, data:Any):
         print(f"{self.id}: {data}")
 
 class Square(Node):
-    def on_message(self, name:str, data:Any):
+    def on_message(self, port_id:str, data:Any):
         self.emit(data*data)
 
 def get_pipeline(mq:RabbitMQ):
