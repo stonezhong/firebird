@@ -3,14 +3,18 @@ import ReactDOM from 'react-dom';
 
 import Col from 'react-bootstrap/Col';
 import Row from 'react-bootstrap/Row';
+import Form from 'react-bootstrap/Form';
+import Stack from 'react-bootstrap/Stack';
 
 import { ApplicationContainer } from '/components/business/appbase';
 
-import {ApplicationPage} from '/common_lib';
+import {ApplicationPage, setStateAsync} from '/common_lib';
 import {get_pipeline} from '/apis';
 
 import BootstrapTable from 'react-bootstrap-table-next';
 import filterFactory, { textFilter, Comparator } from 'react-bootstrap-table2-filter';
+
+import {DlgBoxAgent, DialogBoxStackProvider} from '/components/generic/dialogbox';
 
 import './main.scss';
 
@@ -24,18 +28,111 @@ import './main.scss';
  */
 
 class PipelineApplicationPage extends React.Component {
+    state = {
+        diagramDirection: "lr"
+    }
 
-    render() {
+    node_to_html = node => <div>
+        <Row><Col><h2>{node.title}</h2></Col></Row>
+        <Row><Col><pre>ID: {node.id}</pre></Col></Row>
+        <Row><Col><h2>Description</h2></Col></Row>
+        <Row><Col><p>{node.description}</p></Col></Row>
+        <Row><Col><h2>Ports</h2></Col></Row>
+        <Row><Col>
+            <BootstrapTable
+                keyField="id"
+                data={node.ports}
+                filter={ filterFactory() }
+                bordered={false}
+                columns={[
+                    {
+                        dataField: "id",
+                        text: "Port ID",
+                    },
+                    {
+                        dataField: "type",
+                        text: "Port Type",
+                    },
+                    {
+                        dataField: "connectedPorts",
+                        text: "Connected Ports",
+                        isDummyField: true,
+                        formatter: (cell, row) => row.connected_ports.join(',')
+                    },
+                ]}
+                classes="table-sm executor-table"
+                headerClasses="executor-table-header"
+            >
+            </BootstrapTable>
+        </Col></Row>
+        
+    </div>
+
+    renderWithDialog = dbsRef => {
         return (
             <>
                 <Row>
                     <Col>
-                        <h1>Pipeline -- {this.props.pipeline.info.id}</h1>
+                        <h1>Pipeline -- {this.props.pipeline.info.title}</h1>
+                    </Col>
+                </Row>
+                <Row>
+                    <Col>
+                        <pre>ID: {this.props.pipeline.info.id}</pre>
+                    </Col>
+                </Row>
+                <Row>
+                    <Col>
+                        <h1>Description</h1>
+                    </Col>
+                </Row>
+                <Row>
+                    <Col>
+                        {this.props.pipeline.info.description}
                     </Col>
                 </Row>
 
-                <Row><Col><h2>Diagram</h2></Col></Row>
-                <Row><Col>{ <div dangerouslySetInnerHTML={{ __html: this.props.svg }} /> }</Col></Row>
+                <Row><Col>
+                    <Stack direction="horizontal" gap={3}>
+                        <h2>Diagram</h2>
+                        <Form style={{width: "300px"}}>
+                            <Form.Group as={Row} controlId="direction">
+                                <Form.Label column sm="4">Direction</Form.Label>
+                                <Col sm="8">
+                                    <Form.Select
+                                        onChange={event => {
+                                            setStateAsync(this, {diagramDirection:event.target.value})
+                                        }}
+                                        value={this.state.diagramDirection}
+                                    >
+                                        <option value="lr">Left to right</option>
+                                        <option value="tb">Top to bottom</option>
+                                    </Form.Select>
+                                </Col>
+                            </Form.Group>
+                        </Form>
+                    </Stack>
+                </Col></Row>
+
+                <Row><Col>
+                    { <div 
+                        dangerouslySetInnerHTML={{ __html: this.state.diagramDirection==='lr'?this.props.svg_lr: this.props.svg_tb}} 
+                        className='svg-wrapper-div'
+                        onClick={event => {
+                            const nodeId = event.target.parentNode.parentNode.parentNode.getElementsByTagName("title")[0].textContent;
+                            event.stopPropagation();
+                            event.preventDefault();
+
+                            const node = _.find(this.props.pipeline.info.nodes, {'id': nodeId});
+
+                            dbsRef.current.openDialog({
+                                title: node.title,
+                                size: "md",
+                                content: this.node_to_html(node)
+                            });
+                        }}
+                    /> }
+                </Col></Row>
 
                 <Row><Col><h2>Executors</h2></Col></Row>
                 <BootstrapTable
@@ -43,7 +140,6 @@ class PipelineApplicationPage extends React.Component {
                     data={this.props.pipeline.executors}
                     filter={ filterFactory() }
                     bordered={false}
-                    bootstrap4
                     columns={[
                         {
                             dataField: "info.id",
@@ -76,6 +172,13 @@ class PipelineApplicationPage extends React.Component {
                 </BootstrapTable>
             </>
         )
+
+    }
+
+    render() {
+        return <DialogBoxStackProvider.Consumer>
+            {this.renderWithDialog}
+        </DialogBoxStackProvider.Consumer>
     }
 }
 
@@ -91,7 +194,11 @@ $(async function() {
             init_menu_key={page.init_menu_key}
             app_context={page.app_context}
         >
-            <PipelineApplicationPage pipeline={pipeline.pipeline} svg={pipeline.svg}/>
+            <PipelineApplicationPage 
+                pipeline={pipeline.pipeline} 
+                svg_lr={pipeline.svg_lr}
+                svg_tb={pipeline.svg_tb}
+            />
         </ApplicationContainer>,
         document.getElementById('app')
     );
