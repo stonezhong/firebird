@@ -1,8 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Any, Optional, Dict, Set, Union, Tuple
 from enum import Enum
-from queue import PriorityQueue, Empty
-from collections import deque
+from multiprocessing.sharedctypes import Synchronized
 
 from firebird.rabbitmq import RabbitMQ
 ########################################################################
@@ -20,17 +19,6 @@ DEFAULT_OUTPUT_PORT_ID  = "output"
 class PortType(Enum):
     INPUT = 1
     OUTPUT = 2
-
-class _PORT_DICT:
-    def __init__(self, v):
-        self.v = v
-        for port_name, port in v.items():
-            setattr(self, port_name, port)
-    
-    def __getitem__(self, key):
-        return self.v[key]
-    
-    
     
 class Node(ABC):
     # Each input port has a unique name among input ports
@@ -43,6 +31,7 @@ class Node(ABC):
         pipeline:"Pipeline", 
         input_port_ids:List[str]=[DEFAULT_INPUT_PORT_ID], 
         output_port_ids:List[str]=[DEFAULT_OUTPUT_PORT_ID],
+        title:str="",
         description:str="",
     ):
         # validate input port ids and output port ids
@@ -51,12 +40,16 @@ class Node(ABC):
             raise Exception(f"Duplicate port ids found!")
 
         self._ports_dict:Dict[str, "Port"] = {}
-        self.id = id
-        self.pipeline = pipeline
-        self.description = description
+        self._id:str = id
+        self._pipeline:"Pipeline" = pipeline
+        self._description:str = description
+        if title:
+            self._title = title
+        else:
+            self._title = id
         
-        self._input_port_ids = tuple(input_port_ids)
-        self._output_port_ids = tuple(output_port_ids)
+        self._input_port_ids:Tuple["Node"] = tuple(input_port_ids)
+        self._output_port_ids:Tuple["Node"] = tuple(output_port_ids)
 
         for port_id in input_port_ids:
             self._ports_dict[port_id] = Port(PortType.INPUT, port_id, self)
@@ -69,39 +62,56 @@ class Node(ABC):
     def to_json(self):
         ret = {
             "id": self.id,
+            "title": self.title,
             "description": self.description,
             "ports": [port.to_json() for port in self._ports_dict.values()]
         }
         return ret
     
     def __getitem__(self, port_id:str) -> Optional["Port"]:
-        return self.get_port(port_id)
+        return self._get_port(port_id)
 
     @property
-    def input_port_ids(self):
+    def id(self) -> str:
+        return self._id
+
+    @property
+    def pipeline(self) -> "Pipeline":
+        return self._pipeline
+
+    @property
+    def description(self) -> str:
+        return self._description
+
+    @property
+    def title(self) -> str:
+        return self._title
+
+    @property
+    def input_port_ids(self) -> Tuple["Node"]:
         return self._input_port_ids
 
     @property
-    def output_port_ids(self):
+    def output_port_ids(self) -> Tuple["Node"]:
         return self._output_port_ids
     
     @property
-    def input(self):
+    def input(self) -> Optional["Port"]:
         # return default input port
-        return self.get_port(DEFAULT_INPUT_PORT_ID)
+        return self._get_port(DEFAULT_INPUT_PORT_ID)
     
     @property
-    def output(self):
+    def output(self) -> Optional["Port"]:
         # return default output port
-        return self.get_port(DEFAULT_OUTPUT_PORT_ID)
+        return self._get_port(DEFAULT_OUTPUT_PORT_ID)
    
-    def get_port(self, id:str) -> Optional["Port"]:
+    def _get_port(self, id:str) -> Optional["Port"]:
         # get input port by name
         return self._ports_dict.get(id)
 
     @abstractmethod
-    def on_message(self, name:str, data:Any):
-        # data arrives form input port with port name
+    def on_message(self, port_id:str, data:Any):
+        # data arrives form input port with port_id
         pass
 
     def __lshift__(self, other:Union["Node", "Port", Tuple[Union["Node", "Port"]], List[Union["Node", "Port"]]]):
@@ -149,14 +159,14 @@ class Node(ABC):
         src._connect(dst)
     
     def emit(self, json_data:Any, port_id:str=DEFAULT_OUTPUT_PORT_ID):
-        self.get_port(port_id).emit(json_data)
+        self._get_port(port_id).emit(json_data)
     
     def show_info(self, prefix=""):
         print(f"{prefix}node: id={self.id}")
         for port_id in self.input_port_ids:
-            self.get_port(port_id).show_info(prefix=prefix+"    ")
+            self._get_port(port_id).show_info(prefix=prefix+"    ")
         for port_id in self.output_port_ids:
-            self.get_port(port_id).show_info(prefix=prefix+"    ")
+            self._get_port(port_id).show_info(prefix=prefix+"    ")
     
     def is_generator(self):
         return isinstance(self, Generator)
@@ -167,9 +177,17 @@ class Sink(Node):
         id:str,
         pipeline:"Pipeline", 
         input_port_ids:List[str]=[DEFAULT_INPUT_PORT_ID],
+        title:str="",
         description:str="",
     ):
-        super().__init__(id=id, pipeline=pipeline, input_port_ids=input_port_ids, output_port_ids=[], description=description)
+        super().__init__(
+            id=id, 
+            pipeline=pipeline, 
+            input_port_ids=input_port_ids, 
+            output_port_ids=[], 
+            title=title,
+            description=description
+        )
 
 class Generator(Node):
     def __init__(self, 
@@ -177,36 +195,58 @@ class Generator(Node):
         id:str,
         pipeline:"Pipeline", 
         output_port_ids:List[str]=[DEFAULT_OUTPUT_PORT_ID],
+        title:str="",
         description:str="",
     ):
-        super().__init__(id=id, pipeline=pipeline, input_port_ids=[], output_port_ids=output_port_ids, description=description)
+        super().__init__(
+            id=id, 
+            pipeline=pipeline, 
+            input_port_ids=[], 
+            output_port_ids=output_port_ids,
+            title=title,
+            description=description
+        )
 
     def on_message(self, name:str, data:Any):
         raise Exception("Generator cannot process data")
 
     @abstractmethod
-    def pump(self, quit_requested):
+    def pump(self, quit_requested: Synchronized):
         """
         Let the source to collect data and emit data
+
+        quit_requested: a boolean shared value
         """
         pass
 
 
 class Port:
     def __init__(self, type:PortType, id:str, owner:Node):
-        self.type:PortType  = type
-        self.id:str         = id
-        self.owner:Node     = owner
+        self._id:str        = id
+        self._type:PortType = type
+        self._owner:Node    = owner
         self._connected_ports:Set["Port"] = set()
 
     def to_json(self):
         ret = {
+            "id": self.id,
             "type": self.type.name,
-            "connected_ports": [],
+            "connected_ports": [f"{port.owner.id}:{port.id}" for port in self._connected_ports],
         }
-        ret["connected_ports"].extend([f"{port.owner.id}:{port.id}" for port in self._connected_ports])
         return ret
-    
+
+    @property
+    def id(self) -> str:
+        return self._id
+
+    @property
+    def type(self) -> PortType:
+        return self._type
+
+    @property
+    def owner(self) -> Node:
+        return self._owner
+
     def __lshift__(self, other:Union["Port", Tuple["Port"], List["Port"]]):
         # for self << other
         assert other is not None
@@ -288,21 +328,42 @@ class Port:
 
     
 class Pipeline:
-    def __init__(self, *, id:str, mq:RabbitMQ, description:str=""):
-        self.id = id
-        self.description = description
-        self.mq = mq
+    def __init__(self, *, id:str, mq:Optional[RabbitMQ], title:str="", description:str=""):
+        self._id:str = id
+        self._description:str = description
+        if title:
+            self._title:str = title
+        else:
+            self._title:str = id
+        self._mq:RabbitMQ  = mq
         self._node_dict:Dict[str, Node] = {}
 
     def to_json(self):
         ret = {
             "id": self.id,
+            "title": self.title,
             "description": self.description,
             "nodes": [node.to_json() for node in self._node_dict.values()]
         }
         return ret
 
-    def message_loop(self, quit_requested):
+    @property
+    def id(self) -> str:
+        return self._id
+
+    @property
+    def description(self) -> str:
+        return self._description
+
+    @property
+    def title(self) -> str:
+        return self._title
+
+    @property
+    def mq(self) -> Optional[RabbitMQ]:
+        return self._mq
+
+    def message_loop(self, quit_requested: Synchronized):
         self.mq.consume(self.on_message, quit_requested)
     
     def on_message(self, envelope):

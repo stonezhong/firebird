@@ -9,5 +9,11 @@
         "port": 5672,
         "heartbeat": 300
     },
-    "docker_handler_module": "docker_handler"
+    "docker_handler_module": "docker_handler",
+    "mysql": {
+        "db_name": "firebird",
+        "username": "stonezhong",
+        "password": "foobar",
+        "server": "mysql"
+    }
 }

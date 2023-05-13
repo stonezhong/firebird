@@ -24,29 +24,35 @@ def get_pipeline(request:HttpRequest, pipeline_id:str)->HttpResponse:
         filename = f.name
         svg_filename = f"{filename}.svg"
 
-    try:
-        edges = set()
-        g = graphviz.Digraph(format="svg")
-        for node in pipeline["info"]["nodes"]:
-            g.node(node['id'], node['id'])
+    svgs = []
+    for rankdir in ["LR", "TB"]:
+        try:
+            edges = set()
+            g = graphviz.Digraph(format="svg")
+            g.attr(bgcolor="transparent")
+            g.attr(rankdir=rankdir)
+            for node in pipeline["info"]["nodes"]:
+                g.node(node['id'], node['title'], shape="box", href="#", style="filled", fillcolor="green")
 
-            for port in node["ports"]:
-                if port["type"] == "OUTPUT":
-                    for connected_port in port["connected_ports"]:
-                        next_node_id, _ = connected_port.split(":")
-                        edges.add((node["id"], next_node_id))
-        for src_node_id, next_node_id in edges:
-            g.edge(src_node_id, next_node_id)
-        g.render(filename=filename)
+                for port in node["ports"]:
+                    if port["type"] == "OUTPUT":
+                        for connected_port in port["connected_ports"]:
+                            next_node_id, _ = connected_port.split(":")
+                            edges.add((node["id"], next_node_id))
+            for src_node_id, next_node_id in edges:
+                g.edge(src_node_id, next_node_id)
+            g.render(filename=filename)
 
-        doc = xml.dom.minidom.parse(svg_filename)
-        svg = doc.documentElement.toxml()
-    finally:
-        for fn in [filename, svg_filename]:
-            if os.path.isfile(fn):
-                os.remove(fn)
+            doc = xml.dom.minidom.parse(svg_filename)
+            svg = doc.documentElement.toxml()
+            svgs.append(svg)
+        finally:
+            for fn in [filename, svg_filename]:
+                if os.path.isfile(fn):
+                    os.remove(fn)
 
     return JsonResponse({
         "pipeline": pipeline,
-        "svg": svg
+        "svg_lr": svgs[0],
+        "svg_tb": svgs[1],
     })
