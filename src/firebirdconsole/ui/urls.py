@@ -8,4 +8,5 @@ urlpatterns = [
 
     path('apis/pipelines', apis.list_pipelines, name='api.list_pipelines'),
     path('apis/pipelines/<str:pipeline_id>', apis.get_pipeline, name='api.get_pipeline'),
+    path('apis/pipelines/<str:pipeline_id>/executors/<str:id>', apis.EXECUTOR, name='api.executor'),
 ]

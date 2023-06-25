@@ -5,11 +5,12 @@ import Col from 'react-bootstrap/Col';
 import Row from 'react-bootstrap/Row';
 import Form from 'react-bootstrap/Form';
 import Stack from 'react-bootstrap/Stack';
+import Button from 'react-bootstrap/Button';
 
 import { ApplicationContainer } from '/components/business/appbase';
 
 import {ApplicationPage, setStateAsync} from '/common_lib';
-import {get_pipeline} from '/apis';
+import {get_pipeline, stop_executor} from '/apis';
 
 import BootstrapTable from 'react-bootstrap-table-next';
 import filterFactory, { textFilter, Comparator } from 'react-bootstrap-table2-filter';
@@ -44,6 +45,7 @@ class PipelineApplicationPage extends React.Component {
                 data={node.ports}
                 filter={ filterFactory() }
                 bordered={false}
+                bootstrap4
                 columns={[
                     {
                         dataField: "id",
@@ -140,10 +142,31 @@ class PipelineApplicationPage extends React.Component {
                     data={this.props.pipeline.executors}
                     filter={ filterFactory() }
                     bordered={false}
+                    bootstrap4
                     columns={[
+                        {
+                            dataField: "tools",
+                            text: "",
+                            isDummyField: true,
+                            formatter: (cell, row) => <>
+                                {!row.stop && <Button 
+                                    variant="primary" 
+                                    size="sm"
+                                    onClick={async event => {
+                                        await stop_executor(this.props.pipeline.info.id, row.info.id, this.props.csrf_token);
+                                    }}
+                                >Stop</Button>}
+                                </>,
+                                headerStyle: {
+                                    width: "80px"
+                                }
+                        },
                         {
                             dataField: "info.id",
                             text: "Executor ID",
+                            headerStyle: {
+                                width: "320px"
+                            }
                         },
                         {
                             dataField: "info.docker_host_name",
@@ -156,14 +179,47 @@ class PipelineApplicationPage extends React.Component {
                         {
                             dataField: "info.pid",
                             text: "PID",
+                            headerStyle: {
+                                width: "120px"
+                            },
+                            style: {
+                                fontFamily: "monospace",
+                                textAlign: "center",
+                            }
                         },
                         {
                             dataField: "info.start_time",
                             text: "Start Time (UTC)",
+                            headerStyle: {
+                                width: "200px"
+                            },
+                            style: {
+                                fontFamily: "monospace",
+                                textAlign: "center",
+                            }
                         },
                         {
                             dataField: "info.worker_count",
                             text: "Worker Count",
+                            headerStyle: {
+                                width: "120px"
+                            },
+                            style: {
+                                fontFamily: "monospace",
+                                textAlign: "center",
+                            }
+                        },
+                        {
+                            dataField: "stop",
+                            text: "Status",
+                            isDummyField: true,
+                            formatter: (cell, row) => row.stop?"Shutdown in Progress":"Running",
+                            headerStyle: {
+                                width: "250px"
+                            },
+                            style: {
+                                fontFamily: "monospace",
+                            }
                         },
                     ]}
                     classes="table-sm executor-table"
