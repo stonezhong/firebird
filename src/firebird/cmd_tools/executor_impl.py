@@ -65,12 +65,10 @@ def execute_pipeline(
     config:dict, 
     *, 
     pipeline_id:str, 
-    worker_count:int, 
-    docker_host_name:str, 
-    docker_container_name:str
+    worker_count:int
 ):
     logger.info(f"execute_pipeline: enter")
-    logger.info(f"execute_pipeline: pipeline_id={pipeline_id}, worker_count={worker_count}, docker_host_name={docker_host_name}, docker_container_name={docker_container_name}")
+    logger.info(f"execute_pipeline: pipeline_id={pipeline_id}, worker_count={worker_count}")
     zk_config = config['zookeeper']
 
     with zkdb(**zk_config) as db:
@@ -87,8 +85,6 @@ def execute_pipeline(
         db.register_executor(
             pipeline_id, 
             executor_id, 
-            docker_host_name=docker_host_name, 
-            docker_container_name=docker_container_name, 
             worker_count=worker_count
         )
         logger.info(f"execute_pipeline: executor_id registered")

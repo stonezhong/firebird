@@ -21,12 +21,6 @@ def main():
         "-pid", "--pipeline-id", type=str, required=True, help="pipeline ID"
     )
     parser.add_argument(
-        "-dhn", "--docker-host-name", type=str, required=True, help="docker host name"
-    )
-    parser.add_argument(
-        "-dcn", "--docker-container-name", type=str, required=True, help="docker container name"
-    )
-    parser.add_argument(
         "-wc", "--worker-count", type=int, default=1, required=False,
         help="Worker count"
     )
@@ -86,8 +80,6 @@ def main():
         config, 
         pipeline_id=args.pipeline_id, 
         worker_count=args.worker_count, 
-        docker_host_name=args.docker_host_name, 
-        docker_container_name=args.docker_container_name
     )
 
 

@@ -43,8 +43,6 @@ def list_command(config):
             for executor in pipeline["executors"]:
                 executor_info = executor["info"]
                 print(f"        {executor_info['id']}:")
-                print(f"            docker_host_name      = {executor_info['docker_host_name']}")
-                print(f"            docker_container_name = {executor_info['docker_container_name']}")
                 print(f"            worker_count          = {executor_info['worker_count']}")
                 print(f"            start_time            = {executor_info['start_time']}")
                 print(f"            pid                   = {executor_info['pid']}")
@@ -53,12 +51,3 @@ def stop_command(config:dict, pipeline_id:str, executor_id:str):
     with zkdb(**config['zookeeper']) as db:
         db.stop_executor(pipeline_id, executor_id)
 
-def execute_command(config:dict, docker_host_name:str, docker_container_name:str, pipeline_id:str, worker_count:int):
-    docker_handler_module = config["docker_handler_module"]
-    docker_handler = importlib.import_module(docker_handler_module)
-
-    docker_client = docker.DockerClient(base_url=f"ssh://{docker_host_name}:22", use_ssh_client=True)
-    try:
-        docker_handler.launch_executor(docker_client, docker_host_name, docker_container_name, pipeline_id, worker_count)
-    finally:
-        docker_client.close()

@@ -169,14 +169,6 @@ class PipelineApplicationPage extends React.Component {
                             }
                         },
                         {
-                            dataField: "info.docker_host_name",
-                            text: "Docker Host Name",
-                        },
-                        {
-                            dataField: "info.docker_container_name",
-                            text: "Docker Container Name",
-                        },
-                        {
                             dataField: "info.pid",
                             text: "PID",
                             headerStyle: {

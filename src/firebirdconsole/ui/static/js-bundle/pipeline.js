@@ -17627,12 +17627,6 @@ var PipelineApplicationPage = /*#__PURE__*/function (_React$Component) {
             width: "320px"
           }
         }, {
-          dataField: "info.docker_host_name",
-          text: "Docker Host Name"
-        }, {
-          dataField: "info.docker_container_name",
-          text: "Docker Container Name"
-        }, {
           dataField: "info.pid",
           text: "PID",
           headerStyle: {
