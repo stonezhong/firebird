@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: firebird-console-deployment
+  namespace: firebird
+  labels:
+    app: firebird-console
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: firebird-console
+  template:
+    metadata:
+      labels:
+        app: firebird-console
+    spec:
+      containers:
+      - name: firebird-console
+        image: iad.ocir.io/idrnu3akjpv5/firebird-console:latest
+        command: ["fbconsole", "runserver", "0.0.0.0:8000"]
+        ports:
+        - containerPort: 8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: firebird-console-service
+  labels:
+    app: firebird-console
+  namespace: firebird
+  annotations:
+    oci.oraclecloud.com/load-balancer-type: "lb"
+    service.beta.kubernetes.io/oci-load-balancer-internal: "true"
+spec:
+  type: LoadBalancer
+  selector: 
+    app: firebird-console
+  ports:
+  - port: 80
+    targetPort: 8000

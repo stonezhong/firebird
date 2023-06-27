@@ -8,5 +8,11 @@
         "host": "rabbitmq",
         "port": 5672,
         "heartbeat": 300
+    },
+    "mysql": {
+        "db_name": "firebird",
+        "username": "stonezhong",
+        "password": "changeme",
+        "server": "10.0.30.131"
     }
 }
