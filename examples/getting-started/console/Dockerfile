@@ -6,8 +6,9 @@ RUN apk update \
     && apk add --no-cache openssh \
     && apk add --no-cache graphviz
 
-COPY firebird_config /root/.firebird
-COPY kube_config /root/.kube/config
+COPY configs/firebird_config /root/.firebird
+COPY configs/oci /root/.oci
+COPY configs/kube /root/.kube
 
 WORKDIR /usr/src/app
 COPY src ./

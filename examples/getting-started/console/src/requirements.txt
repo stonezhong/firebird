@@ -1,1 +1,3 @@
-pyfirebird==0.0.47
+pyfirebird==0.0.49
+oci==2.105.0
+oci-cli==3.29.2

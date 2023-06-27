@@ -35,7 +35,7 @@ LOG_CONFIG = {
 def check_args(args, names):
     for name in names:
         if getattr(args, name) is None:
-            print(f"Missing option --{name.repalce("_", "-")}")
+            print(f"Missing option --{name.repalce('_', '-')}")
             sys.exit(2)
 
 def main():
