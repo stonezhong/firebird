@@ -116,8 +116,6 @@ class ZKDatabase:
         pipeline_id:str, 
         executor_id:str, 
         *, 
-        docker_host_name:str, 
-        docker_container_name:str, 
         worker_count:int
     ):
         """
@@ -136,8 +134,6 @@ class ZKDatabase:
         self.zk.ensure_path(executor_path)
 
         executor_info = {
-            "docker_host_name": docker_host_name,
-            "docker_container_name": docker_container_name,
             "worker_count": worker_count,
             "start_time": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
             "pid": os.getpid(),

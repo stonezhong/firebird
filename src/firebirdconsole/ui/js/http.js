@@ -12,14 +12,14 @@ export async function api_get(url, params={}) {
     throw res;
 }
 
-export async function api_post(url, csrfToken, payload) {
+export async function api_post(url, csrf_token, payload) {
     const res = await fetch(
         url,
         {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken,
+                'X-CSRFToken': csrf_token,
             },
             body: JSON.stringify(payload),
         }
@@ -30,14 +30,32 @@ export async function api_post(url, csrfToken, payload) {
     throw res;
 }
 
-export async function api_delete(url, csrfToken) {
+export async function api_put(url, csrf_token, payload) {
+    const res = await fetch(
+        url,
+        {
+            method: "PATCH",
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrf_token,
+            },
+            body: JSON.stringify(payload),
+        }
+    );
+    if (res.status >= 200 && res.status < 300) {
+        return res.json();
+    }
+    throw res;
+}
+
+export async function api_delete(url, csrf_token) {
     const res = await fetch(
         url,
         {
             method: "DELETE",
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken,
+                'X-CSRFToken': csrf_token,
             },
         }
     );
@@ -47,7 +65,7 @@ export async function api_delete(url, csrfToken) {
     throw res;
 }
 
-export async function api_patch(url, csrfToken, payload) {
+export async function api_patch(url, csrf_token, payload) {
     const res = await fetch(
         url,
         {
@@ -55,7 +73,7 @@ export async function api_patch(url, csrfToken, payload) {
             headers: {
                 'Content-Type': 'application/json',
                 'X-UNICORN-Use-Method': 'PATCH',
-                'X-CSRFToken': csrfToken,
+                'X-CSRFToken': csrf_token,
             },
             body: JSON.stringify(payload),
         }

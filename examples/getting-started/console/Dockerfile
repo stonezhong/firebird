@@ -1,5 +1,5 @@
 # FROM python:3.11-alpine
-FROM python:3.11-alpine
+FROM iad.ocir.io/idrnu3akjpv5/python:3.11-alpine
 RUN apk update \
     && apk add --virtual build-deps gcc python3-dev musl-dev\
     && apk add --no-cache mysql-dev \

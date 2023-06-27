@@ -38,7 +38,7 @@ def main():
     )
     parser.add_argument(
         "action", type=str, help="Specify action",
-        choices=['register', 'unregister', 'list', 'execute', 'stop'],
+        choices=['register', 'unregister', 'list', 'stop'],
         nargs=1
     )
     parser.add_argument(
@@ -60,14 +60,6 @@ def main():
     parser.add_argument(
         "-wc", "--worker-count", type=int, default=1, required=False,
         help="Worker count"
-    )
-    parser.add_argument(
-        "-dhn", "--docker-host-name", type=str, required=False,
-        help="Docker host name"
-    )
-    parser.add_argument(
-        "-dcn", "--docker-container-name", type=str, required=False,
-        help="Docker container name"
     )
     parser.add_argument(
         "-eid", "--executor-id", type=str, required=False, help="Executor ID"
@@ -95,8 +87,6 @@ def main():
         impl.unregister_command(config, args.pipeline_id)
     elif action == "list":
         impl.list_command(config)
-    elif action == "execute":
-        impl.execute_command(config, args.docker_host_name, args.docker_container_name, args.pipeline_id, args.worker_count)
     elif action == "stop":
         impl.stop_command(config, args.pipeline_id, args.executor_id)
         
