@@ -11,7 +11,7 @@ with open(os.path.join(HERE, "README.md"), "r") as f:
 # This call to setup() does all the work
 setup(
     name="pyfirebird",
-    version="0.0.47",
+    version="0.0.48",
     description="Streaming Data Processing Framework",
     long_description=README,
     long_description_content_type="text/markdown",
@@ -27,7 +27,7 @@ setup(
     packages=find_packages(where='src'),
     package_data={"firebirdconsole": ["ui/templates/*", "ui/static/js-bundle/*", "ui/static/images/*"]},
     include_package_data=True,
-    install_requires=["pika", "kazoo", "docker", "paramiko", "Django>=4.2.1", "mysqlclient", "graphviz>=0.20.1"],
+    install_requires=["pika", "kazoo", "Django>=4.2.1", "mysqlclient", "graphviz>=0.20.1", "kubernetes"],
     entry_points={
         "console_scripts": [
             "pipeline=firebird.cmd_tools.pipeline:main",

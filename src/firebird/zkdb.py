@@ -22,7 +22,7 @@ class ZKDatabase:
     def __init__(self, zk):
         self.zk = zk
     
-    def register_pipeline(self, pipeline_id:str, pipeline_module_name:str, pipeline_info:str):
+    def register_pipeline(self, pipeline_id:str, pipeline_namespace_name:str, pipeline_image_name:str, pipeline_module_name:str, pipeline_info:str):
         """
         Register a pipeline
         """
@@ -34,6 +34,8 @@ class ZKDatabase:
         self.zk.ensure_path(pipeline_path)
         self.zk.create(f"{pipeline_path}/info", json.dumps(pipeline_info).encode("utf-8"))
         self.zk.create(f"{pipeline_path}/module", pipeline_module_name.encode("utf-8"))
+        self.zk.create(f"{pipeline_path}/namespace", pipeline_namespace_name.encode("utf-8"))
+        self.zk.create(f"{pipeline_path}/image_name", pipeline_image_name.encode("utf-8"))
 
     def unregister_pipeline(self, pipeline_id:str):
         """
@@ -96,6 +98,10 @@ class ZKDatabase:
         pipeline_info = json.loads(v.decode("utf-8"))
         v, _ = self.zk.get(f"{pipeline_path}/module")
         module = v.decode("utf-8")
+        v, _ = self.zk.get(f"{pipeline_path}/namespace_name")
+        namespace_name = v.decode("utf-8")
+        v, _ = self.zk.get(f"{pipeline_path}/image_name")
+        image_name = v.decode("utf-8")
 
         executor_ids_path = f"/pipelines/{pipeline_id}/executors"
         executors = []
@@ -107,6 +113,8 @@ class ZKDatabase:
         return {
             "info": pipeline_info,
             "module": module,
+            "image_name": image_name,
+            "namespace_name": namespace_name,
             "executors": executors
         }
 

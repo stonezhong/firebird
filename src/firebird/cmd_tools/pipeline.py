@@ -32,6 +32,12 @@ LOG_CONFIG = {
 
 # logger = logging.getLogger(__name__)
 
+def check_args(args, names):
+    for name in names:
+        if getattr(args, name) is None:
+            print(f"Missing option --{name.repalce("_", "-")}")
+            sys.exit(2)
+
 def main():
     parser = argparse.ArgumentParser(
         description='Pipeline Tool'
@@ -62,6 +68,12 @@ def main():
         help="Worker count"
     )
     parser.add_argument(
+        "-pnn", "--pipeline-namespace-name", type=str, required=False, help="pipeline namespace name"
+    )
+    parser.add_argument(
+        "-pin", "--pipeline-image-name", type=str, required=False, help="pipeline image name"
+    )
+    parser.add_argument(
         "-eid", "--executor-id", type=str, required=False, help="Executor ID"
     )
     args = parser.parse_args()
@@ -82,11 +94,21 @@ def main():
     impl = importlib.import_module("firebird.cmd_tools.pipeline_impl")
 
     if action == "register":
-        impl.register_command(config, args.pipeline_module_name)
+        check_args(["pipeline_namespace_name", "pipeline_image_name", "pipeline_module_name"])
+        impl.register_command(
+            config, 
+            args.pipeline_namespace_name, 
+            args.pipeline_image_name, 
+            args.pipeline_module_name
+        )
     if action == "unregister":
+        check_args(["pipeline_id"])
         impl.unregister_command(config, args.pipeline_id)
     elif action == "list":
         impl.list_command(config)
+    elif action == "start":
+        check_args(["pipeline_id"])
+        impl.start_command(config, args.pipeline_id)
     elif action == "stop":
         impl.stop_command(config, args.pipeline_id, args.executor_id)
         

@@ -7,6 +7,7 @@ RUN apk update \
     && apk add --no-cache graphviz
 
 COPY firebird_config /root/.firebird
+COPY kube_config /root/.kube/config
 
 WORKDIR /usr/src/app
 COPY src ./
@@ -15,5 +16,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN apk del build-deps
 
 ENV PYTHONPATH=/usr/src/app
+ENV KUBECONFIG=/root/.kube/config
 
 CMD ["/bin/sleep", "infinity"]

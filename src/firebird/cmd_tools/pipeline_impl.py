@@ -7,11 +7,11 @@ import importlib
 from uuid import uuid4
 from firebird.rabbitmq import get_connection, RabbitMQ
 from firebird import zkdb
-import docker
+from kubernetes import client, config
 
 logger = logging.getLogger(__name__)
 
-def register_command(config:dict, pipeline_module_name:str):
+def register_command(config:dict, pipeline_namespace_name:str, pipeline_image_name:str, pipeline_module_name:str):
     pipeline = importlib.import_module(pipeline_module_name).get_pipeline(None)
     pipeline_info = pipeline.to_json()
 
@@ -23,7 +23,7 @@ def register_command(config:dict, pipeline_module_name:str):
     mq.initialize()
 
     with zkdb(**config['zookeeper']) as db:
-        db.register_pipeline(pipeline.id, pipeline_module_name, pipeline_info)
+        db.register_pipeline(pipeline.id, pipeline_namespace_name, pipeline_image_name, pipeline_module_name)
 
 def unregister_command(config:dict, pipeline_id:str):
     with zkdb(**config['zookeeper']) as db:
@@ -51,3 +51,6 @@ def stop_command(config:dict, pipeline_id:str, executor_id:str):
     with zkdb(**config['zookeeper']) as db:
         db.stop_executor(pipeline_id, executor_id)
 
+
+def start_command(config, pipeline_id):
+    print("Not implemented")
