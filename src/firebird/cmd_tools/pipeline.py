@@ -68,6 +68,10 @@ def main():
         help="Worker count"
     )
     parser.add_argument(
+        "-r", "--replicas", type=int, default=1, required=False,
+        help="replicas"
+    )
+    parser.add_argument(
         "-pnn", "--pipeline-namespace-name", type=str, required=False, help="pipeline namespace name"
     )
     parser.add_argument(
@@ -108,10 +112,10 @@ def main():
         impl.list_command(config)
     elif action == "start":
         check_args(args, ["pipeline_id"])
-        impl.start_command(config, args.pipeline_id)
+        impl.start_command(config, args.pipeline_id, args.replicas, args.worker_count)
     elif action == "stop":
-        impl.stop_command(config, args.pipeline_id, args.executor_id)
-        
+        check_args(args, ["pipeline_id"])
+        impl.stop_command(config, args.pipeline_id)
 
 
 if __name__ == '__main__':
