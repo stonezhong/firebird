@@ -94,7 +94,7 @@ def main():
     impl = importlib.import_module("firebird.cmd_tools.pipeline_impl")
 
     if action == "register":
-        check_args(["pipeline_namespace_name", "pipeline_image_name", "pipeline_module_name"])
+        check_args(args, ["pipeline_namespace_name", "pipeline_image_name", "pipeline_module_name"])
         impl.register_command(
             config, 
             args.pipeline_namespace_name, 
@@ -102,12 +102,12 @@ def main():
             args.pipeline_module_name
         )
     if action == "unregister":
-        check_args(["pipeline_id"])
+        check_args(args, ["pipeline_id"])
         impl.unregister_command(config, args.pipeline_id)
     elif action == "list":
         impl.list_command(config)
     elif action == "start":
-        check_args(["pipeline_id"])
+        check_args(args, ["pipeline_id"])
         impl.start_command(config, args.pipeline_id)
     elif action == "stop":
         impl.stop_command(config, args.pipeline_id, args.executor_id)

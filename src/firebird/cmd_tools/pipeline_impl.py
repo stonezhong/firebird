@@ -23,7 +23,7 @@ def register_command(config:dict, pipeline_namespace_name:str, pipeline_image_na
     mq.initialize()
 
     with zkdb(**config['zookeeper']) as db:
-        db.register_pipeline(pipeline.id, pipeline_namespace_name, pipeline_image_name, pipeline_module_name)
+        db.register_pipeline(pipeline.id, pipeline_namespace_name, pipeline_image_name, pipeline_module_name, pipeline_info)
 
 def unregister_command(config:dict, pipeline_id:str):
     with zkdb(**config['zookeeper']) as db:

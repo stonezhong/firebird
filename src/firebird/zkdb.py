@@ -34,7 +34,7 @@ class ZKDatabase:
         self.zk.ensure_path(pipeline_path)
         self.zk.create(f"{pipeline_path}/info", json.dumps(pipeline_info).encode("utf-8"))
         self.zk.create(f"{pipeline_path}/module", pipeline_module_name.encode("utf-8"))
-        self.zk.create(f"{pipeline_path}/namespace", pipeline_namespace_name.encode("utf-8"))
+        self.zk.create(f"{pipeline_path}/namespace_name", pipeline_namespace_name.encode("utf-8"))
         self.zk.create(f"{pipeline_path}/image_name", pipeline_image_name.encode("utf-8"))
 
     def unregister_pipeline(self, pipeline_id:str):
