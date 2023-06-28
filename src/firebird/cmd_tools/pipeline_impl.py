@@ -60,10 +60,21 @@ def stop_command(config:dict, pipeline_id:str):
     resp = api.delete_namespaced_deployment(
         name=pipeline_id,
         namespace=pipeline["namespace_name"],
+        pretty=True,
         body=client.V1DeleteOptions(
             propagation_policy="Foreground", grace_period_seconds=300
         ),
     )
+    print(resp)
+    resp = api.delete_namespaced_stateful_set(
+        name=f"{pipeline_id}-g",
+        namespace=pipeline["namespace_name"],
+        pretty=True,
+        body=client.V1DeleteOptions(
+            propagation_policy="Foreground", grace_period_seconds=300
+        ),
+    )
+    print(resp)
 
 
 def start_command(config, pipeline_id, replicas):
@@ -75,28 +86,36 @@ def start_command(config, pipeline_id, replicas):
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{pipeline_id}}
+  name: {{pipeline_id}}-g
   namespace: {{pipeline_namespace_name}}
   labels:
-    app: {{pipeline_id}}
+    app: {{pipeline_id}}-g
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: {{pipeline_id}}
+      app: {{pipeline_id}}-g
   template:
     metadata:
       labels:
-        app: {{pipeline_id}}
+        app: {{pipeline_id}}-g
     spec:
       containers:
-      - name: {{pipeline_id}}
+      - name: {{pipeline_id}}-g
         image: {{pipeline_image_name}}
         command: ["python", "-u"]
         args: ["/usr/local/lib/python3.11/site-packages/firebird/cmd_tools/executor.py", "-pid", "{{pipeline_id}}", "-rg"]
         volumeMounts:
           - name: checkpoint
             mountPath: /checkpoint
+  volumeClaimTemplates:
+    - metadata:
+        name: checkpoint
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 20Mi
 ---
 apiVersion: apps/v1
 kind: Deployment

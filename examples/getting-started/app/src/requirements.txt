@@ -1,1 +1,1 @@
-pyfirebird==0.0.56
+pyfirebird==0.0.57

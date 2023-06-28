@@ -1,14 +1,23 @@
 from typing import Any
 from firebird import Pipeline, RabbitMQ, Generator, Sink, Node, RabbitMQ
 import time
+import os
 
 class MyGenerator(Generator):
     def pump(self, quit_requested):
-        i = 0
+        # assuming volume checkpoint is mounted at /checkpoint
+        next_number = 0
+        if os.path.isfile("/checkpoint/state"):
+            with open("/checkpoint/state", "rt") as f:
+                next_number = int(f.read())
+
         while not quit_requested.value:
-            self.emit(i)
-            i += 1
+            self.emit(next_number)
+            next_number += 1
             time.sleep(1)
+        
+        with open("/checkpoint/state", "wt") as f:
+            f.write(f"{next_number}")
 
 class MySink(Sink):
     def on_message(self, port_id:str, data:Any):
