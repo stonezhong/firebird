@@ -13,6 +13,7 @@ class MyGenerator(Generator):
 
         while not quit_requested.value:
             self.emit(next_number)
+            print(f"{self.id}: {next_number}")
             next_number += 1
             time.sleep(1)
         

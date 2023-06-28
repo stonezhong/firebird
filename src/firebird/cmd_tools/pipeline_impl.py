@@ -56,7 +56,8 @@ def stop_command(config:dict, pipeline_id:str):
         pipeline = db.get_pipeline(pipeline_id)
 
     k8_config.load_kube_config()
-    api = client.CoreV1Api()
+    api = client.AppsV1Api()
+    
     resp = api.delete_namespaced_deployment(
         name=pipeline_id,
         namespace=pipeline["namespace_name"],
