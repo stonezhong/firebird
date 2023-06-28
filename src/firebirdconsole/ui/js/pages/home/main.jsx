@@ -52,14 +52,28 @@ class HomeApplicationPage extends React.Component {
                                     isDummyField: true,
                                     formatter: (cellContent, pipeline) => <a href={`pipelines/${pipeline.info.id}`} target="_blank">{pipeline.info.id}</a>,
                                     headerStyle: {
-                                        width: "500px",
+                                        width: "350px",
+                                    },
+                                },
+                                {
+                                    dataField: "namespace_name",
+                                    text: "Namespace",
+                                    headerStyle: {
+                                        width: "200px",
+                                    },
+                                },
+                                {
+                                    dataField: "image_name",
+                                    text: "Image",
+                                    headerStyle: {
+                                        width: "350px",
                                     },
                                 },
                                 {
                                     dataField: "module",
                                     text: "Module",
                                     headerStyle: {
-                                        width: "500px",
+                                        width: "350px",
                                     },
                                 },
                                 {

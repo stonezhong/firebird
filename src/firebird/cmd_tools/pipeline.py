@@ -44,7 +44,7 @@ def main():
     )
     parser.add_argument(
         "action", type=str, help="Specify action",
-        choices=['register', 'unregister', 'list', 'stop'],
+        choices=['register', 'unregister', 'list', 'start', 'stop'],
         nargs=1
     )
     parser.add_argument(

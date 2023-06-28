@@ -99,12 +99,3 @@ def get_pipeline(request:HttpRequest, pipeline_id:str)->HttpResponse:
         "svg_lr": svgs[0],
         "svg_tb": svgs[1],
     })
-
-
-class Executor(RESTAPIBase):
-    def delete(self, request:HttpRequest, executor_id:str, *, pipeline_id:str):
-        with zkdb(**settings.FIREBIRD_CONFIG['zookeeper']) as db:
-            db.stop_executor(pipeline_id, executor_id)
-        return {}
-
-EXECUTOR = Executor()

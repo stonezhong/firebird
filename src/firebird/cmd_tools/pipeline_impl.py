@@ -58,12 +58,11 @@ def stop_command(config:dict, pipeline_id:str):
 
     k8_config.load_kube_config()
     api = client.CoreV1Api()
-    k8s_client = client.ApiClient()
     resp = api.delete_namespaced_deployment(
         name=pipeline_id,
         namespace=pipeline["namespace_name"],
-        body=k8s_client.V1DeleteOptions(
-            propagation_policy="Foreground", grace_period_seconds=30
+        body=client.V1DeleteOptions(
+            propagation_policy="Foreground", grace_period_seconds=300
         ),
     )
 

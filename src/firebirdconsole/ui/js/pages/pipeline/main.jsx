@@ -10,7 +10,7 @@ import Button from 'react-bootstrap/Button';
 import { ApplicationContainer } from '/components/business/appbase';
 
 import {ApplicationPage, setStateAsync} from '/common_lib';
-import {get_pipeline, stop_executor} from '/apis';
+import {get_pipeline} from '/apis';
 
 import BootstrapTable from 'react-bootstrap-table-next';
 import filterFactory, { textFilter, Comparator } from 'react-bootstrap-table2-filter';
@@ -80,7 +80,10 @@ class PipelineApplicationPage extends React.Component {
                 </Row>
                 <Row>
                     <Col>
-                        <pre>ID: {this.props.pipeline.info.id}</pre>
+                        <pre>ID       : {this.props.pipeline.info.id}</pre>
+                        <pre>Namespace: {this.props.pipeline.namespace_name}</pre>
+                        <pre>Image    : {this.props.pipeline.image_name}</pre>
+                        <pre>Module   : {this.props.pipeline.module}</pre>
                     </Col>
                 </Row>
                 <Row>
@@ -144,23 +147,6 @@ class PipelineApplicationPage extends React.Component {
                     bordered={false}
                     bootstrap4
                     columns={[
-                        {
-                            dataField: "tools",
-                            text: "",
-                            isDummyField: true,
-                            formatter: (cell, row) => <>
-                                {!row.stop && <Button 
-                                    variant="primary" 
-                                    size="sm"
-                                    onClick={async event => {
-                                        await stop_executor(this.props.pipeline.info.id, row.info.id, this.props.csrf_token);
-                                    }}
-                                >Stop</Button>}
-                                </>,
-                                headerStyle: {
-                                    width: "80px"
-                                }
-                        },
                         {
                             dataField: "info.id",
                             text: "Executor ID",
