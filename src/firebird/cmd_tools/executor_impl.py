@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-from typing import Dict
+from typing import Dict, Optional
 import logging
 
 ###################################################################
@@ -65,10 +65,10 @@ def execute_pipeline(
     config:dict, 
     *, 
     pipeline_id:str, 
-    worker_count:int
+    run_generator:bool
 ):
     logger.info(f"execute_pipeline: enter")
-    logger.info(f"execute_pipeline: pipeline_id={pipeline_id}, worker_count={worker_count}")
+    logger.info(f"execute_pipeline: pipeline_id={pipeline_id}, run_generator={run_generator}")
     zk_config = config['zookeeper']
 
     with zkdb(**zk_config) as db:
@@ -84,8 +84,7 @@ def execute_pipeline(
         logger.info(f"execute_pipeline: executor_id={executor_id}")
         db.register_executor(
             pipeline_id, 
-            executor_id, 
-            worker_count=worker_count
+            executor_id
         )
         logger.info(f"execute_pipeline: executor_id registered")
 
@@ -93,15 +92,17 @@ def execute_pipeline(
     terminated_processes = deque()
     signal.signal(signal.SIGTERM, __request_main_shutdown)  # regular kill command
     logger.info("Started")
+    # if run_generator is True, we will only run generators
+    # other, we will only run non-generator nodes
     for node in pipeline.nodes:
-        if node.is_generator():
+        if node.is_generator() and run_generator:
             p = Process(
                 target=worker_main,
                 args=((config, pipeline_module_name, pipeline_id, node.id, __APP_CONTEXT['quit_requested']))
             )
             p.start()
             active_processes.append(p)
-    for i in range(worker_count):
+    if not run_generator:
         p = Process(
             target=worker_main,
             args=((config, pipeline_module_name, pipeline_id, None, __APP_CONTEXT['quit_requested']))

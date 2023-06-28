@@ -80,10 +80,12 @@ class PipelineApplicationPage extends React.Component {
                 </Row>
                 <Row>
                     <Col>
-                        <pre>ID       : {this.props.pipeline.info.id}</pre>
-                        <pre>Namespace: {this.props.pipeline.namespace_name}</pre>
-                        <pre>Image    : {this.props.pipeline.image_name}</pre>
-                        <pre>Module   : {this.props.pipeline.module}</pre>
+                        <pre>
+    ID       : {this.props.pipeline.info.id}
+    Namespace: {this.props.pipeline.namespace_name}
+    Image    : {this.props.pipeline.image_name}
+    Module   : {this.props.pipeline.module}
+                        </pre>
                     </Col>
                 </Row>
                 <Row>
@@ -170,17 +172,6 @@ class PipelineApplicationPage extends React.Component {
                             text: "Start Time (UTC)",
                             headerStyle: {
                                 width: "200px"
-                            },
-                            style: {
-                                fontFamily: "monospace",
-                                textAlign: "center",
-                            }
-                        },
-                        {
-                            dataField: "info.worker_count",
-                            text: "Worker Count",
-                            headerStyle: {
-                                width: "120px"
                             },
                             style: {
                                 fontFamily: "monospace",

@@ -123,8 +123,6 @@ class ZKDatabase:
         self, 
         pipeline_id:str, 
         executor_id:str, 
-        *, 
-        worker_count:int
     ):
         """
         Register an executor
@@ -142,7 +140,6 @@ class ZKDatabase:
         self.zk.ensure_path(executor_path)
 
         executor_info = {
-            "worker_count": worker_count,
             "start_time": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
             "pid": os.getpid(),
         }

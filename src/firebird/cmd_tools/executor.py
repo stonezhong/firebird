@@ -24,6 +24,11 @@ def main():
         "-wc", "--worker-count", type=int, default=1, required=False,
         help="Worker count"
     )
+    parser.add_argument(
+        "-rg", "--run-generator", 
+        action="store_true",
+        help="Run Generator?"
+    )
     args = parser.parse_args()
 
     # config log
@@ -79,7 +84,7 @@ def main():
     impl.execute_pipeline(
         config, 
         pipeline_id=args.pipeline_id, 
-        worker_count=args.worker_count, 
+        run_generator=args.run_generator
     )
 
 

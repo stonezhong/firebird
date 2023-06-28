@@ -48,7 +48,6 @@ def list_command(config):
             for executor in pipeline["executors"]:
                 executor_info = executor["info"]
                 print(f"        {executor_info['id']}:")
-                print(f"            worker_count          = {executor_info['worker_count']}")
                 print(f"            start_time            = {executor_info['start_time']}")
                 print(f"            pid                   = {executor_info['pid']}")
 
@@ -67,12 +66,38 @@ def stop_command(config:dict, pipeline_id:str):
     )
 
 
-def start_command(config, pipeline_id, replicas, worker_count):
+def start_command(config, pipeline_id, replicas):
     with zkdb(**config['zookeeper']) as db:
         pipeline = db.get_pipeline(pipeline_id)
 
     environment = jinja2.Environment()
     template = environment.from_string("""\
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{pipeline_id}}
+  namespace: {{pipeline_namespace_name}}
+  labels:
+    app: {{pipeline_id}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{pipeline_id}}
+  template:
+    metadata:
+      labels:
+        app: {{pipeline_id}}
+    spec:
+      containers:
+      - name: {{pipeline_id}}
+        image: {{pipeline_image_name}}
+        command: ["python", "-u"]
+        args: ["/usr/local/lib/python3.11/site-packages/firebird/cmd_tools/executor.py", "-pid", "{{pipeline_id}}", "-rg"]
+        volumeMounts:
+          - name: checkpoint
+            mountPath: /checkpoint
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -94,14 +119,13 @@ spec:
       - name: {{pipeline_id}}
         image: {{pipeline_image_name}}
         command: ["python", "-u"]
-        args: ["/usr/local/lib/python3.11/site-packages/firebird/cmd_tools/executor.py", "-pid", "{{pipeline_id}}", "-wc", "{{worker_count}}"]
+        args: ["/usr/local/lib/python3.11/site-packages/firebird/cmd_tools/executor.py", "-pid", "{{pipeline_id}}"]
 """)
     deployment_str = template.render(
         pipeline_namespace_name=pipeline["namespace_name"],
         pipeline_image_name=pipeline["image_name"],
         pipeline_id=pipeline_id,
-        replicas=replicas,
-        worker_count=worker_count
+        replicas=replicas
     )
     k8_config.load_kube_config()
     k8s_client = client.ApiClient()

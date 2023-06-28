@@ -64,10 +64,6 @@ def main():
         "-pid", "--pipeline-id", type=str, required=False, help="pipeline ID"
     )
     parser.add_argument(
-        "-wc", "--worker-count", type=int, default=1, required=False,
-        help="Worker count"
-    )
-    parser.add_argument(
         "-r", "--replicas", type=int, default=1, required=False,
         help="replicas"
     )
@@ -112,7 +108,7 @@ def main():
         impl.list_command(config)
     elif action == "start":
         check_args(args, ["pipeline_id"])
-        impl.start_command(config, args.pipeline_id, args.replicas, args.worker_count)
+        impl.start_command(config, args.pipeline_id, args.replicas)
     elif action == "stop":
         check_args(args, ["pipeline_id"])
         impl.stop_command(config, args.pipeline_id)
