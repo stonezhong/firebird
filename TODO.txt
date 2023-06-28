@@ -1,0 +1,6 @@
+2023-06-28
+    - For generator pod, each one only run a single generator
+    - when execcutor register, it should register
+    is this for a generator? If yes, which node id
+    - add a pipeline command allow user to re-scale replica number for non-generator nodes
+    - add state get/set API
