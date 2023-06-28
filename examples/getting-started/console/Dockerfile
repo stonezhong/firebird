@@ -10,6 +10,9 @@ COPY configs/firebird_config /root/.firebird
 COPY configs/oci /root/.oci
 COPY configs/kube /root/.kube
 
+RUN chmod -R 600 /root/.oci/config
+RUN chmod -R 600 /root/.oci/oci_api_key.pem
+
 WORKDIR /usr/src/app
 COPY src ./
 
