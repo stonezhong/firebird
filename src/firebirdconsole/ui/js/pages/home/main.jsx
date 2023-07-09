@@ -77,6 +77,15 @@ class HomeApplicationPage extends React.Component {
                                     },
                                 },
                                 {
+                                    dataField: "is_running",
+                                    text: "Running",
+                                    isDummyField: true,
+                                    formatter: (cellContent, pipeline) => pipeline.is_running?"Yes":"No",
+                                    headerStyle: {
+                                        width: "80px",
+                                    },
+                                },
+                                {
                                     dataField: "info.description",
                                     text: "Description",
                                 },

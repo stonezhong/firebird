@@ -1,1 +1,1 @@
-from .main import list_pipelines, get_pipeline
+from .main import PipelinesAPI

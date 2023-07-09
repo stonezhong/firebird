@@ -80,12 +80,13 @@ class PipelineApplicationPage extends React.Component {
                 </Row>
                 <Row>
                     <Col>
-                        <pre>
-    ID       : {this.props.pipeline.info.id}
-    Namespace: {this.props.pipeline.namespace_name}
-    Image    : {this.props.pipeline.image_name}
-    Module   : {this.props.pipeline.module}
-                        </pre>
+                        <table>
+                            <tr><td>ID</td><td class="ps-2">{this.props.pipeline.info.id}</td></tr>
+                            <tr><td>Namespace</td><td class="ps-2">{this.props.pipeline.namespace_name}</td></tr>
+                            <tr><td>Image</td><td class="ps-2">{this.props.pipeline.image_name}</td></tr>
+                            <tr><td>Module</td><td class="ps-2">{this.props.pipeline.module}</td></tr>
+                            <tr><td>Running</td><td class="ps-2">{this.props.pipeline.is_running?"Yes":"No"}</td></tr>
+                        </table>
                     </Col>
                 </Row>
                 <Row>
@@ -157,6 +158,17 @@ class PipelineApplicationPage extends React.Component {
                             }
                         },
                         {
+                            dataField: "info.generator_id",
+                            text: "Generator",
+                            headerStyle: {
+                                width: "120px"
+                            },
+                            style: {
+                                fontFamily: "monospace",
+                                textAlign: "center",
+                            }
+                        },
+                        {
                             dataField: "info.pid",
                             text: "PID",
                             headerStyle: {
@@ -176,18 +188,6 @@ class PipelineApplicationPage extends React.Component {
                             style: {
                                 fontFamily: "monospace",
                                 textAlign: "center",
-                            }
-                        },
-                        {
-                            dataField: "stop",
-                            text: "Status",
-                            isDummyField: true,
-                            formatter: (cell, row) => row.stop?"Shutdown in Progress":"Running",
-                            headerStyle: {
-                                width: "250px"
-                            },
-                            style: {
-                                fontFamily: "monospace",
                             }
                         },
                     ]}

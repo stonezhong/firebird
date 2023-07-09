@@ -1,3 +1,5 @@
+from typing import Optional, Any, Tuple
+from enum import Enum
 import json
 import os
 from datetime import datetime
@@ -10,10 +12,23 @@ def zkdb(**kwargs):
     db = ZKDatabase(zk)
     zk.start()
     try:
-        yield db
+        zk.ensure_path("/pipelines")
+        zk.ensure_path("/firebird-global-lock")
+        # TODO: Monolithic lock is not ideal, only for MVP
+        with zk.Lock("/firebird-global-lock", "zkdb"):
+            yield db
     finally:
         zk.stop()
         zk.close()
+
+class ZKError(Enum):
+    OK = 1                          # Operation completed successfully
+    PIPELINE_ALREADY_REGISTERED = 2
+    PIPELINE_NOT_REGISTERED     = 3
+    PIPELINE_IS_RUNNING         = 4
+    PIPELINE_HAS_EXECUTORS      = 5
+    EXECUTOR_ALREADY_EXIST      = 6
+    EXECUTOR_NOT_FOUND          = 7
 
 class ZKDatabase:
     """
@@ -22,99 +37,107 @@ class ZKDatabase:
     def __init__(self, zk):
         self.zk = zk
     
-    def register_pipeline(self, pipeline_id:str, pipeline_namespace_name:str, pipeline_image_name:str, pipeline_module_name:str, pipeline_info:str):
+    def register_pipeline(
+        self, 
+        pipeline_id:str, 
+        pipeline_namespace_name:str, 
+        pipeline_image_name:str, 
+        pipeline_module_name:str, 
+        pipeline_info:str
+    ) -> ZKError:
         """
         Register a pipeline
         """
-        self.zk.ensure_path("/pipelines")
         pipeline_path = f"/pipelines/{pipeline_id}"
         if self.zk.exists(pipeline_path):
-            raise Exception(f"Pipeline {pipeline_id} is already registered!")
+            return ZKError.PIPELINE_ALREADY_REGISTERED
         
         self.zk.ensure_path(pipeline_path)
         self.zk.create(f"{pipeline_path}/info", json.dumps(pipeline_info).encode("utf-8"))
         self.zk.create(f"{pipeline_path}/module", pipeline_module_name.encode("utf-8"))
         self.zk.create(f"{pipeline_path}/namespace_name", pipeline_namespace_name.encode("utf-8"))
         self.zk.create(f"{pipeline_path}/image_name", pipeline_image_name.encode("utf-8"))
+        self.zk.create(f"{pipeline_path}/is_running", b'0')
+        return ZKError.OK
 
-    def unregister_pipeline(self, pipeline_id:str):
+    def unregister_pipeline(self, pipeline_id:str) -> ZKError:
         """
         Unregister a pipeline
         """
         pipeline_path = f"/pipelines/{pipeline_id}"
         if not self.zk.exists(pipeline_path):
-            raise Exception(f"Pipeline {pipeline_id} is not yet registered!")
+            return ZKError.PIPELINE_NOT_REGISTERED
         
+        # You can only unregister a pipeline if it is not running
+        value, version = self.zk.get(f"{pipeline_path}/is_running")
+        if value != b'0':
+            return ZKError.PIPELINE_IS_RUNNING
+
         executors_path = f"{pipeline_path}/executors"
         if self.zk.exists(executors_path) and len(self.zk.get_children(executors_path)) > 0:
-            raise Exception(f"Pipeline {pipeline_id} has executors!")
+            return ZKError.PIPELINE_HAS_EXECUTORS
         
         self.zk.delete(pipeline_path, recursive=True)
+        return ZKError.OK
 
-    def get_pipelines(self) -> dict:
+    def get_pipelines(self):
         """
         Get information for all pipelines
         """
-        if not self.zk.exists("/pipelines"):
-            return []
-        return [
-            self.get_pipeline(pipeline_id) for pipeline_id in self.zk.get_children("/pipelines")
-        ]
+        pipelines = []
+        for pipeline_id in self.zk.get_children("/pipelines"):
+            status, pipeline = self.get_pipeline(pipeline_id)
+            assert status == ZKError.OK
+            assert pipeline is not None
+            pipelines.append(pipeline)
+        return pipelines
 
-    def get_executor(self, pipeline_id:str, executor_id:str) -> dict:
+    def get_executor(self, pipeline_id:str, executor_id:str) -> Tuple[ZKError, Any]:
         """
         Get information for an executor
         """
         executor_path = f"/pipelines/{pipeline_id}/executors/{executor_id}"
         if not self.zk.exists(executor_path):
-            return None
+            return ZKError.EXECUTOR_NOT_FOUND, None
         v, _ = self.zk.get(f"{executor_path}/info")
         executor_info = json.loads(v.decode("utf-8"))
         executor_info['id'] = executor_id
-        v, _ = self.zk.get(f"{executor_path}/stop")
-        stop = v == b'1'
-        return {
-            "info": executor_info,
-            "stop": stop
-        }
+        return ZKError.OK, {"info": executor_info}
 
-    def get_executor_stop(self, pipeline_id:str, executor_id:str) -> bool:
-        """
-        Check if stop is requested for an executor
-        """
-        executor_path = f"/pipelines/{pipeline_id}/executors/{executor_id}"
-        v, _ = self.zk.get(f"{executor_path}/stop")
-        return v == b'1'
-
-    def get_pipeline(self, pipeline_id:str) -> dict:
+    def get_pipeline(self, pipeline_id:str) -> Tuple[ZKError, Any]:
         """
         Get information for a pipeline
         """
         pipeline_path = f"/pipelines/{pipeline_id}"
         if not self.zk.exists(pipeline_path):
-            return None
+            return ZKError.PIPELINE_NOT_REGISTERED, None
 
-        v, _ = self.zk.get(f"{pipeline_path}/info")
-        pipeline_info = json.loads(v.decode("utf-8"))
-        v, _ = self.zk.get(f"{pipeline_path}/module")
-        module = v.decode("utf-8")
-        v, _ = self.zk.get(f"{pipeline_path}/namespace_name")
-        namespace_name = v.decode("utf-8")
-        v, _ = self.zk.get(f"{pipeline_path}/image_name")
-        image_name = v.decode("utf-8")
+        value, _ = self.zk.get(f"{pipeline_path}/info")
+        pipeline_info = json.loads(value.decode("utf-8"))
+        value, _ = self.zk.get(f"{pipeline_path}/module")
+        module = value.decode("utf-8")
+        value, _ = self.zk.get(f"{pipeline_path}/namespace_name")
+        namespace_name = value.decode("utf-8")
+        value, _ = self.zk.get(f"{pipeline_path}/image_name")
+        image_name = value.decode("utf-8")
+        value, _ = self.zk.get(f"{pipeline_path}/is_running")
+        is_running = value == b'1'
 
         executor_ids_path = f"/pipelines/{pipeline_id}/executors"
         executors = []
         if self.zk.exists(executor_ids_path):
-            executors = [
-                self.get_executor(pipeline_id, executor_id) for executor_id in self.zk.get_children(executor_ids_path)
-            ]
+            for executor_id in self.zk.get_children(executor_ids_path):
+                error, executor = self.get_executor(pipeline_id, executor_id)
+                assert error == ZKError.OK
+                assert executor is not None
+                executors.append(executor)
         
-        return {
+        return ZKError.OK, {
             "info": pipeline_info,
             "module": module,
             "image_name": image_name,
             "namespace_name": namespace_name,
+            "is_running": is_running,
             "executors": executors
         }
 
@@ -123,65 +146,48 @@ class ZKDatabase:
         self, 
         pipeline_id:str, 
         executor_id:str, 
-    ):
+        generator_id: Optional[str]
+    ) ->ZKError:
         """
         Register an executor
         """
         if not self.zk.exists(f"/pipelines/{pipeline_id}"):
-            raise Exception(f"Pipeline {pipeline_id} does not exist!")
+            return ZKError.PIPELINE_NOT_REGISTERED
     
         executors_path = f"/pipelines/{pipeline_id}/executors"
         self.zk.ensure_path(executors_path)
 
         executor_path = f"{executors_path}/{executor_id}"
         if self.zk.exists(executor_path):
-            raise Exception(f"Executor {executor_id} already exist!")
+            return ZKError.EXECUTOR_ALREADY_EXIST
         
         self.zk.ensure_path(executor_path)
 
         executor_info = {
             "start_time": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
             "pid": os.getpid(),
+            "generator_id": generator_id
         }
         self.zk.create(f"{executor_path}/info", json.dumps(executor_info).encode("utf-8"))
-        self.zk.create(f"{executor_path}/stop", b'0')
+        return ZKError.OK
 
-    def watch_executor(self, pipeline_id:str, executor_id:str, callback):
-        """
-        Watch if stop is requested on an executor
-        """
-        def watcher(event):
-            if event.type == "CHANGED":
-                stop = self.get_executor_stop(pipeline_id, executor_id)
-                if stop:
-                    callback()
-                else:
-                    # keep watching...
-                    self.watch_executor(pipeline_id, executor_id, callback)
-            else:
-                # keep watching...
-                self.watch_executor(pipeline_id, executor_id, callback)
-
-        stop_path = f"/pipelines/{pipeline_id}/executors/{executor_id}/stop"
-        if self.zk.exists(stop_path):
-            self.zk.get(stop_path, watcher)
-        
-
-    def unregister_executor(self, pipeline_id:str, executor_id:str):
+     
+    def unregister_executor(self, pipeline_id:str, executor_id:str) -> ZKError:
         """
         Unregister an executor
         """
         executor_path = f"/pipelines/{pipeline_id}/executors/{executor_id}"
         if not self.zk.exists(executor_path):
-            raise Exception(f"Executor {executor_id} does not exist!")
+            return ZKError.EXECUTOR_NOT_FOUND
         self.zk.delete(executor_path, recursive=True)
+        return ZKError.OK
 
-    def stop_executor(self, pipeline_id:str, executor_id:str):
-        """
-        Request stop of an executor.
-        """
-        executor_path = f"/pipelines/{pipeline_id}/executors/{executor_id}"
-        if not self.zk.exists(executor_path):
-            raise Exception(f"Executor {executor_id} does not exist!")
-    
-        self.zk.set(f"{executor_path}/stop", b'1')
+    def set_pipeline_is_running(self, pipeline_id:str, is_running:bool) -> ZKError:
+        pipeline_path = f"/pipelines/{pipeline_id}"
+        if not self.zk.exists(pipeline_path):
+            return ZKError.PIPELINE_NOT_REGISTERED
+        value, _ = self.zk.get(f"{pipeline_path}/is_running")
+        target_value = b'1' if is_running else b'0'
+        if value != target_value:
+            self.zk.set(f"{pipeline_path}/is_running", target_value)
+        return ZKError.OK

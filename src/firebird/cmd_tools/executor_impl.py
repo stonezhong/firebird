@@ -14,37 +14,28 @@ import logging
 ###################################################################
 logger = logging.getLogger(__name__)
 
+import sys
 import importlib
 import signal
-import time
 from multiprocessing import Process, Value
-from collections import deque
 from uuid import uuid4
-from firebird import zkdb
+from firebird import zkdb, Node, ZKError
 
 from firebird.rabbitmq import get_connection, RabbitMQ
 
-__APP_CONTEXT = {
+__EXECUTOR_CONTEXT = {
     'quit_requested': Value('b', False)
 }
-
-__WORKER_CONTEXT = {
-    'quit_requested': False
-}
     
-def __request_main_shutdown(signal_umber, frame):
+def __request_executor_shutdown(signal_umber, frame):
     _, _ = signal_umber, frame
-    __APP_CONTEXT['quit_requested'].value = True
-    logger.info("main: Got SIGTERM")
-
-def __request_worker_shutdown(signal_umber, frame):
-    _, _ = signal_umber, frame
-    __WORKER_CONTEXT['quit_requested'] = True
-    logger.info("worker: Got SIGTERM")
+    __EXECUTOR_CONTEXT['quit_requested'].value = True
+    logger.info("executor: Got SIGTERM")
 
 
-def worker_main(config:dict, pipeline_module_name:str, pipeline_id:str, node_id, quit_requested):
-    signal.signal(signal.SIGTERM, __request_worker_shutdown)  # regular kill command
+def executor_main(config:dict, pipeline_module_name:str, pipeline_id:str, node: Optional[Node]):
+    signal.signal(signal.SIGTERM, __request_executor_shutdown)  # regular kill command
+    quit_requested = __EXECUTOR_CONTEXT['quit_requested']
 
     mq = RabbitMQ(
         connection = get_connection(**config["rabbitmq"]),
@@ -52,27 +43,31 @@ def worker_main(config:dict, pipeline_module_name:str, pipeline_id:str, node_id,
     )
     pipeline = importlib.import_module(pipeline_module_name).get_pipeline(mq)
     
-    if node_id is not None:
-        # this is for generator
-        generator = pipeline[node_id]
+    if node is None:
+        # for puller
+        pipeline.message_loop(quit_requested)
+    else:
+        # for generator
+        generator = pipeline[node.id]
         generator.pump(quit_requested)
-        return
-    
-    # otherwise, this is for message processing
-    pipeline.message_loop(quit_requested)
 
 def execute_pipeline(
     config:dict, 
     *, 
     pipeline_id:str, 
-    run_generator:bool
+    generator_id:Optional[str]
 ):
     logger.info(f"execute_pipeline: enter")
-    logger.info(f"execute_pipeline: pipeline_id={pipeline_id}, run_generator={run_generator}")
+    logger.info(f"execute_pipeline: pipeline_id={pipeline_id}, generator_id={generator_id}")
     zk_config = config['zookeeper']
 
     with zkdb(**zk_config) as db:
-        pipeline = db.get_pipeline(pipeline_id)
+        error, pipeline = db.get_pipeline(pipeline_id)
+        if error != ZKError.OK:
+            logger.info(f"execute_pipeline: uable to get pipeline {pipeline_id}, error is {error}!")
+            logger.info(f"execute_pipeline: exit")
+            sys.exit(1)
+
         pipeline_module_name = pipeline['module']
         logger.info(f"execute_pipeline: pipeline_module_name={pipeline_module_name}")
 
@@ -82,59 +77,23 @@ def execute_pipeline(
 
         executor_id = str(uuid4())
         logger.info(f"execute_pipeline: executor_id={executor_id}")
-        db.register_executor(
-            pipeline_id, 
-            executor_id
-        )
-        logger.info(f"execute_pipeline: executor_id registered")
+        error = db.register_executor(pipeline_id, executor_id, generator_id)
+        if error != ZKError.OK:
+            logger.info(f"execute_pipeline: uable to register executor {executor_id}, error is {error}!")
+            logger.info(f"execute_pipeline: exit")
+            sys.exit(1)
 
-    active_processes = deque()
-    terminated_processes = deque()
-    signal.signal(signal.SIGTERM, __request_main_shutdown)  # regular kill command
-    logger.info("Started")
-    # if run_generator is True, we will only run generators
-    # other, we will only run non-generator nodes
-    for node in pipeline.nodes:
-        if node.is_generator() and run_generator:
-            p = Process(
-                target=worker_main,
-                args=((config, pipeline_module_name, pipeline_id, node.id, __APP_CONTEXT['quit_requested']))
-            )
-            p.start()
-            active_processes.append(p)
-    if not run_generator:
-        p = Process(
-            target=worker_main,
-            args=((config, pipeline_module_name, pipeline_id, None, __APP_CONTEXT['quit_requested']))
-        )
-        p.start()
-        active_processes.append(p)
+        logger.info(f"execute_pipeline: executor {executor_id} registered")
 
-    logger.info(f"execute_pipeline: all worker started")
-
-    def watch_stop():
-        logger.info(f"execute_pipeline: stop requested!")
-        __APP_CONTEXT['quit_requested'].value = True
-
-    
-    with zkdb(**zk_config) as db:
-        db.watch_executor(pipeline_id, executor_id, watch_stop)
-        while True:
-            if len(active_processes) == 0:
-                break
-            tmp = active_processes
-            active_processes = deque()
-            for p in tmp:
-                if p.is_alive():
-                    active_processes.append(p)
-                else:
-                    p.join()
-                    logger.info(f"execute_pipeline: pid={p.pid} is terminated!")
-                    terminated_processes.append(p)
-            time.sleep(1)
-        logger.info(f"execute_pipeline: all worker stopped")
-        db.unregister_executor(pipeline_id, executor_id)
-
-    logger.info(f"execute_pipeline: executor {executor_id} unregistered")
-    logger.info(f"execute_pipeline: exit")
+    try:
+        node = None if generator_id is None else pipeline[generator_id]
+        executor_main(config, pipeline_module_name, pipeline_id, node)
+    finally:
+        with zkdb(**zk_config) as db:
+            error = db.unregister_executor(pipeline_id, executor_id)
+            if error == ZKError.OK:
+                logger.info(f"execute_pipeline: executor {executor_id} unregistered")
+            else:
+                logger.info(f"execute_pipeline: uable to unregister executor {executor_id}, error is {error}!")
+            logger.info(f"execute_pipeline: exit")
 

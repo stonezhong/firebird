@@ -18,16 +18,10 @@ def main():
         help="Configuration directory"
     )
     parser.add_argument(
-        "-pid", "--pipeline-id", type=str, required=True, help="pipeline ID"
+        "-pid", "--pipeline-id", type=str, required=True, help="Pipeline ID"
     )
     parser.add_argument(
-        "-wc", "--worker-count", type=int, default=1, required=False,
-        help="Worker count"
-    )
-    parser.add_argument(
-        "-rg", "--run-generator", 
-        action="store_true",
-        help="Run Generator?"
+        "-gid", "--generator-id", type=str, help="Generator ID"
     )
     args = parser.parse_args()
 
@@ -84,7 +78,7 @@ def main():
     impl.execute_pipeline(
         config, 
         pipeline_id=args.pipeline_id, 
-        run_generator=args.run_generator
+        generator_id=args.generator_id
     )
 
 
