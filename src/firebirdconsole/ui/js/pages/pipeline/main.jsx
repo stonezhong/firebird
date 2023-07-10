@@ -10,7 +10,7 @@ import Button from 'react-bootstrap/Button';
 import { ApplicationContainer } from '/components/business/appbase';
 
 import {ApplicationPage, setStateAsync} from '/common_lib';
-import {get_pipeline} from '/apis';
+import {get_pipeline, start_pipeline, stop_pipeline} from '/apis';
 
 import BootstrapTable from 'react-bootstrap-table-next';
 import filterFactory, { textFilter, Comparator } from 'react-bootstrap-table2-filter';
@@ -30,7 +30,24 @@ import './main.scss';
 
 class PipelineApplicationPage extends React.Component {
     state = {
-        diagramDirection: "lr"
+        diagramDirection: "lr",
+        pipeline: null,
+        svg_lr: null,
+        svg_tb: null,
+    }
+
+    refresh = async () => {
+        try {
+            const pipeline = await get_pipeline(this.props.pipeline_id);
+            await setStateAsync(this, pipeline)
+        }
+        catch (error) {
+            await this.props.set_alert("danger", error)
+        }
+    }
+
+    async componentDidMount() {
+        await this.refresh();
     }
 
     node_to_html = node => <div>
@@ -67,7 +84,6 @@ class PipelineApplicationPage extends React.Component {
             >
             </BootstrapTable>
         </Col></Row>
-        
     </div>
 
     renderWithDialog = dbsRef => {
@@ -75,18 +91,44 @@ class PipelineApplicationPage extends React.Component {
             <>
                 <Row>
                     <Col>
-                        <h1>Pipeline -- {this.props.pipeline.info.title}</h1>
+                        <h1>Pipeline -- {this.state.pipeline && this.state.pipeline.info.title}</h1>
                     </Col>
                 </Row>
                 <Row>
-                    <Col>
+                    <Col xs={6}>
                         <table>
-                            <tr><td>ID</td><td class="ps-2">{this.props.pipeline.info.id}</td></tr>
-                            <tr><td>Namespace</td><td class="ps-2">{this.props.pipeline.namespace_name}</td></tr>
-                            <tr><td>Image</td><td class="ps-2">{this.props.pipeline.image_name}</td></tr>
-                            <tr><td>Module</td><td class="ps-2">{this.props.pipeline.module}</td></tr>
-                            <tr><td>Running</td><td class="ps-2">{this.props.pipeline.is_running?"Yes":"No"}</td></tr>
+                            <tr><td>ID</td><td class="ps-2">{this.state.pipeline && this.state.pipeline.info.id}</td></tr>
+                            <tr><td>Namespace</td><td class="ps-2">{this.state.pipeline && this.state.pipeline.namespace_name}</td></tr>
+                            <tr><td>Image</td><td class="ps-2">{this.state.pipeline && this.state.pipeline.image_name}</td></tr>
+                            <tr><td>Module</td><td class="ps-2">{this.state.pipeline && this.state.pipeline.module}</td></tr>
+                            <tr><td>Running</td><td class="ps-2">{this.state.pipeline && this.state.pipeline.is_running?"Yes":"No"}</td></tr>
                         </table>
+                    </Col>
+                    <Col xs={6}>
+                        {this.state.pipeline && !this.state.pipeline.is_running && <Button 
+                            size="sm"
+                            onClick={async (event) => {
+                                try {
+                                    await start_pipeline(this.props.pipeline_id, this.props.csrf_token);
+                                    await this.refresh();
+                                }
+                                catch (resp) {
+                                    await this.props.set_alert("danger", resp.statusText);
+                                }
+                            }}
+                        >Start</Button>}
+                        {this.state.pipeline && this.state.pipeline.is_running && <Button 
+                            size="sm"
+                            onClick={async (event) => {
+                                try {
+                                    await stop_pipeline(this.props.pipeline_id, this.props.csrf_token);
+                                    await this.refresh();
+                                }
+                                catch (resp) {
+                                    await this.props.set_alert("danger", resp.statusText);
+                                }
+                            }}
+                        >Stop</Button>}
                     </Col>
                 </Row>
                 <Row>
@@ -96,7 +138,7 @@ class PipelineApplicationPage extends React.Component {
                 </Row>
                 <Row>
                     <Col>
-                        {this.props.pipeline.info.description}
+                        {this.state.pipeline && this.state.pipeline.info.description}
                     </Col>
                 </Row>
 
@@ -123,15 +165,15 @@ class PipelineApplicationPage extends React.Component {
                 </Col></Row>
 
                 <Row><Col>
-                    { <div 
-                        dangerouslySetInnerHTML={{ __html: this.state.diagramDirection==='lr'?this.props.svg_lr: this.props.svg_tb}} 
+                    { this.state.pipeline && <div 
+                        dangerouslySetInnerHTML={{ __html: this.state.diagramDirection==='lr'?this.state.svg_lr: this.state.svg_tb}} 
                         className='svg-wrapper-div'
                         onClick={event => {
                             const nodeId = event.target.parentNode.parentNode.parentNode.getElementsByTagName("title")[0].textContent;
                             event.stopPropagation();
                             event.preventDefault();
 
-                            const node = _.find(this.props.pipeline.info.nodes, {'id': nodeId});
+                            const node = _.find(this.state.pipeline.info.nodes, {'id': nodeId});
 
                             dbsRef.current.openDialog({
                                 title: node.title,
@@ -143,9 +185,9 @@ class PipelineApplicationPage extends React.Component {
                 </Col></Row>
 
                 <Row><Col><h2>Executors</h2></Col></Row>
-                <BootstrapTable
+                {this.state.pipeline && <BootstrapTable
                     keyField="info.id"
-                    data={this.props.pipeline.executors}
+                    data={this.state.pipeline.executors}
                     filter={ filterFactory() }
                     bordered={false}
                     bootstrap4
@@ -194,7 +236,7 @@ class PipelineApplicationPage extends React.Component {
                     classes="table-sm executor-table"
                     headerClasses="executor-table-header"
                 >
-                </BootstrapTable>
+                </BootstrapTable>}
             </>
         )
 
@@ -209,9 +251,6 @@ class PipelineApplicationPage extends React.Component {
 
 $(async function() {
     const page = new ApplicationPage();
-
-    const pipeline = await get_pipeline(page.app_context.pipeline_id);
-
     ReactDOM.render(
         <ApplicationContainer
             current_user={page.current_user}
@@ -220,9 +259,7 @@ $(async function() {
             app_context={page.app_context}
         >
             <PipelineApplicationPage 
-                pipeline={pipeline.pipeline} 
-                svg_lr={pipeline.svg_lr}
-                svg_tb={pipeline.svg_tb}
+                pipeline_id={page.app_context.pipeline_id}
             />
         </ApplicationContainer>,
         document.getElementById('app')

@@ -1,53 +1,31 @@
-from typing import Optional
+import logging
+
+from .api_base import RESTAPIBase, ServerInternalError
+
 import os
-from django.http import JsonResponse
-from django.http  import HttpRequest, HttpResponse
+from django.http  import HttpRequest
 from django.conf import settings
-from firebird import zkdb
+from firebird import zkdb, ZKError
 import tempfile
 import xml.dom.minidom
 import graphviz
 from django.core.exceptions import BadRequest
+from firebird.libs.k8 import K8ACCESSOR
 
-class RESTAPIBase:
-    def list(self, request:HttpRequest, **kwargs):
-        # returns JSON object
-        raise BadRequest('LIST is not supported')
+logger = logging.getLogger(__name__)
 
-    def get(self, request:HttpRequest, id:str, **kwargs):
-        # returns JSON object
-        raise BadRequest('GET is not supported')
 
-    def update(self, request:HttpRequest, id:str, partial:bool=False, **kwargs):
-        # returns JSON object
-        raise BadRequest('UPDATE is not supported')
-    
-    def create(self, request:HttpRequest, **kwargs):
-        # returns JSON object
-        raise BadRequest('CREATE is not supported')
-
-    def delete(self, request:HttpRequest, id:str, **kwargs):
-        # returns JSON object
-        raise BadRequest('DELETE is not supported')
-
-    def __call__(self, request:HttpRequest, id:Optional[str]=None, **kwargs):
-        resp_json = None
-        if request.method == "GET":
-            if id is None:
-                resp_json = self.list(request, **kwargs)
-            else:
-                resp_json = self.get(request, id, **kwargs)
-        elif request.method == "PUT":
-            resp_json = self.update(request, id, partial=False, **kwargs)
-        elif request.method == "PATCH":
-            resp_json = self.update(request, id, partial=True, **kwargs)
-        elif request.method == "POST":
-            resp_json = self.create(request, **kwargs)
-        elif request.method == "DELETE":
-            resp_json = self.delete(request, id, **kwargs)
-        else:
-            raise BadRequest(f'{request.method} is not recognized')
-        return JsonResponse(resp_json)    
+def get_generator_ids(pipeline):
+    generator_ids = []
+    for node in pipeline["info"]["nodes"]:
+        input_port_count = 0
+        for port in node["ports"]:
+            if port["type"] == "INPUT": # hack, better use PortType enum
+                input_port_count += 1
+                break
+        if input_port_count == 0:
+            generator_ids.append(node["id"])
+    return generator_ids
 
 class PipelinesAPI(RESTAPIBase):
     def list(self, request:HttpRequest, **kwargs):
@@ -58,6 +36,8 @@ class PipelinesAPI(RESTAPIBase):
     def get(self, request:HttpRequest, id:str, **kwargs):
         with zkdb(**settings.FIREBIRD_CONFIG['zookeeper']) as db:
             error, pipeline = db.get_pipeline(id)
+            if error != ZKError.OK:
+                raise BadRequest(f"Cannot get pipeline {id}")
 
         filename = None
         svg_filename = None
@@ -98,3 +78,50 @@ class PipelinesAPI(RESTAPIBase):
             "svg_tb": svgs[1],
         }
 
+    def start(self, request:HttpRequest, id:str, **kwargs):
+        with zkdb(**settings.FIREBIRD_CONFIG['zookeeper']) as db:
+            error, pipeline = db.get_pipeline(id)
+
+            if error != ZKError.OK:
+                raise BadRequest(f"Unable to get pipeline, error is {error}")
+
+            if pipeline['is_running']:
+                raise BadRequest(f"Pipeline is already running!")
+        
+            K8ACCESSOR.apply(
+                template_name="pipeline.yaml",
+                context={
+                    "pipeline_namespace_name": pipeline["namespace_name"],
+                    "pipeline_image_name": pipeline["image_name"],
+                    "pipeline_id": id,
+                    "replicas": 1,
+                    "generator_ids": get_generator_ids(pipeline)
+                }
+            )
+            error = db.set_pipeline_is_running(id, True)
+            if error != ZKError.OK:
+                raise ServerInternalError(f"Unable to change pipeline to running status, error is {error}")
+
+
+
+    def stop(self, request:HttpRequest, id:str, **kwargs):
+        with zkdb(**settings.FIREBIRD_CONFIG['zookeeper']) as db:
+            error, pipeline = db.get_pipeline(id)
+
+            if error != ZKError.OK:
+                raise BadRequest(f"Unable to get pipeline, error is {error}")
+
+            if not pipeline['is_running']:
+                raise BadRequest(f"Pipeline is not running!")
+
+
+            for generator_id in get_generator_ids(pipeline):
+                name = f"firebird-pipeline--{id}--{generator_id}"
+                K8ACCESSOR.delete_statefulset(namespace=pipeline["namespace_name"], name=name)
+
+            name = f"firebird-pipeline--{id}"
+            K8ACCESSOR.delete_deployment(namespace=pipeline["namespace_name"], name=name)
+
+            error = db.set_pipeline_is_running(id, False)
+            if error != ZKError.OK:
+                raise BadRequest(f"Unable to change pipeline to stopped status, error is {error}")
