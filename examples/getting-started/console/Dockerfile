@@ -6,20 +6,16 @@ RUN apk update \
     && apk add --no-cache openssh \
     && apk add --no-cache graphviz
 
-COPY configs/firebird_config /root/.firebird
-COPY configs/oci /root/.oci
-COPY configs/kube /root/.kube
-
-RUN chmod -R 600 /root/.oci/config
-RUN chmod -R 600 /root/.oci/oci_api_key.pem
-
 WORKDIR /usr/src/app
 COPY src ./
 
+RUN pip config set global.disable-pip-version-check true
+RUN pip install pip setuptools --upgrade
 RUN pip install --no-cache-dir -r requirements.txt
 RUN apk del build-deps
 
 ENV PYTHONPATH=/usr/src/app
 ENV KUBECONFIG=/root/.kube/config
+ENV PYTHONWARNINGS="ignore:Python 3.6 is no longer supported"
 
 CMD ["/bin/sleep", "infinity"]
