@@ -19,6 +19,9 @@ with open(os.path.join(os.path.expanduser("~/.firebird"), "config.json"), "rt") 
     FIREBIRD_CONFIG = json.load(f)
 MYSQL_CONFIG = FIREBIRD_CONFIG['mysql']
 
+# Do not sends out redirect for appending slack at the end of url
+APPEND_SLASH = False
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
