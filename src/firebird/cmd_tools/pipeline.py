@@ -3,10 +3,12 @@
 import logging
 import logging.config
 import argparse
-import importlib
 import os
 import sys
 import json
+
+from firebird.core_apis import CoreAPIs
+from firebird.libs.k8 import K8Accessor
 
 LOG_CONFIG = {
     "version": 1,
@@ -90,28 +92,55 @@ def main():
 
     with open(config_filename, "rt") as f:
         config = json.load(f)
-
-    impl = importlib.import_module("firebird.cmd_tools.pipeline_impl")
+    
+    if action == "register":
+        # register command runs in pipeline image and they do not have access to kubernete cluster
+        core_apis = CoreAPIs(
+            zk_config=config['zookeeper'],
+            k8_accessor=None,
+            rabbitmq_config=config['rabbitmq']
+        )
+    else:
+        core_apis = CoreAPIs(
+            zk_config=config['zookeeper'],
+            k8_accessor=K8Accessor(),
+            rabbitmq_config=config['rabbitmq']
+        )
 
     if action == "register":
         check_args(args, ["pipeline_namespace_name", "pipeline_image_name", "pipeline_module_name"])
-        impl.register_command(
-            config, 
+        core_apis.register_pipeline(
             args.pipeline_namespace_name, 
             args.pipeline_image_name, 
             args.pipeline_module_name
         )
-    if action == "unregister":
+    elif action == "unregister":
         check_args(args, ["pipeline_id"])
-        impl.unregister_command(config, args.pipeline_id)
+        core_apis.unregister_pipeline(args.pipeline_id)
     elif action == "list":
-        impl.list_command(config)
+        ret = core_apis.list_pipelines()
+        for pipeline in ret["pipelines"]:
+            print(f"{pipeline['info']['id']}:")
+            print(f"    namespace: {pipeline['namespace_name']}")
+            print(f"    image    : {pipeline['image_name']}")
+            print(f"    module   : {pipeline['module']}")
+            print(f"    running  : {'Yes' if pipeline['is_running'] else 'No'}")
+            if len(pipeline["executors"]) == 0:
+                print("    executors: None")
+            else:
+                print("    executors:")
+                for executor in pipeline["executors"]:
+                    executor_info = executor["info"]
+                    print(f"        {executor_info['id']}:")
+                    print(f"            start_time            = {executor_info['start_time']}")
+                    print(f"            pid                   = {executor_info['pid']}")
+                    print(f"            generator_id          = {executor_info['generator_id']}")
     elif action == "start":
         check_args(args, ["pipeline_id"])
-        impl.start_command(config, args.pipeline_id, args.replicas)
+        core_apis.start_pipeline(args.pipeline_id)
     elif action == "stop":
         check_args(args, ["pipeline_id"])
-        impl.stop_command(config, args.pipeline_id)
+        core_apis.stop_pipeline(args.pipeline_id)
 
 
 if __name__ == '__main__':

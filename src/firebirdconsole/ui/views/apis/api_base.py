@@ -66,9 +66,9 @@ class RESTAPIBase:
             else:
                 try:
                     m = getattr(self, method)
-                    resp_json = m(request, **kwargs)
                 except AttributeError:
                     raise BadRequest(f'{method} is not supported')
+                resp_json = m(request, **kwargs)
         elif request.method == "DELETE":
             id = kwargs.pop("id", None)
             assert id is not None

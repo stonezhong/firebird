@@ -11,6 +11,7 @@ export class ApplicationPage {
         this.app_context        = this.get_meta_json("app_context", {});
         this.csrf_token         = this.get_meta("csrf");
         this.init_menu_key      = this.get_meta("init_menu_key");
+        this.console_uri_base   = this.get_meta("console_uri_base");
     }
 
     get_meta_json(name, default_value=null) {

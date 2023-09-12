@@ -22,6 +22,8 @@ MYSQL_CONFIG = FIREBIRD_CONFIG['mysql']
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+CONSOLE_URI_BASE = os.environ.get('CONSOLE_URI_BASE', '')
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
@@ -34,6 +36,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
 
+if os.environ.get('CSRF_TRUSTED_ORIGINS', None):
+    CSRF_TRUSTED_ORIGINS = [os.environ.get('CSRF_TRUSTED_ORIGINS')]
 
 # Application definition
 

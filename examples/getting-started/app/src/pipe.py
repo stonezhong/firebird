@@ -26,6 +26,7 @@ class MySink(Sink):
 
 class Square(Node):
     def on_message(self, port_id:str, data:Any):
+        print(f"{self.id}: {data} -> {data*data}")
         self.emit(data*data)
 
 def get_pipeline(mq:RabbitMQ):

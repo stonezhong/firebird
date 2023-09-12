@@ -17,5 +17,6 @@ RUN apk del build-deps
 ENV PYTHONPATH=/usr/src/app
 ENV KUBECONFIG=/root/.kube/config
 ENV PYTHONWARNINGS="ignore:Python 3.6 is no longer supported"
+ENV OCI_CLI_SUPPRESS_FILE_PERMISSIONS_WARNING=True
 
 CMD ["/bin/sleep", "infinity"]
