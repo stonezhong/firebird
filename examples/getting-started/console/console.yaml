@@ -18,8 +18,8 @@ spec:
       containers:
       - name: firebird-console
         image: iad.ocir.io/idrnu3akjpv5/firebird-console:latest
-        # command: ["fbconsole", "runserver", "0.0.0.0:8000"]
-        command: ["/bin/sleep", "infinity"]
+        command: ["fbconsole", "runserver", "0.0.0.0:8000"]
+        # command: ["/bin/sleep", "infinity"]
         env:
         - name: CONSOLE_URI_BASE
           value: "/streaming/console"
