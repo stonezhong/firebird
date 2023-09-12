@@ -18,6 +18,7 @@ import './main.scss';
  * Purpose: Page to view an application
  *
  * Props
+ *      console_uri_base: console_uri_base
  *      current_user: current user
  *      csrf_token:   the csrf token
  *      set_alert:    a function to set alert
@@ -104,10 +105,11 @@ class HomeApplicationPage extends React.Component {
 $(async function() {
     const page = new ApplicationPage();
 
-    const pipelines = await list_pipelines();
+    const pipelines = await list_pipelines(page.console_uri_base);
 
     ReactDOM.render(
         <ApplicationContainer
+            console_uri_base={page.console_uri_base}
             current_user={page.current_user}
             csrf_token={page.csrf_token}
             init_menu_key={page.init_menu_key}

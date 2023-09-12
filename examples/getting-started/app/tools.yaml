@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: demo-tools
+spec:
+    containers:
+    - name: demo-pipeline-tools
+      image: iad.ocir.io/idrnu3akjpv5/firebird-app1:latest
+      command: ["/bin/sleep", "infinity"]
+      volumeMounts:
+      - name: oci-config
+        mountPath: "/root/.oci"
+      - name: kube-config
+        mountPath: "/root/.kube"
+      - name: app-config
+        mountPath: "/root/.firebird"
+    volumes:
+    - name: oci-config
+      secret:
+        secretName: firebird
+        defaultMode: 0400
+        items:
+        - key: oci_config
+          path: config
+        - key: oci_api_key.pem
+          path: oci_api_key.pem
+    - name: kube-config
+      secret:
+        secretName: firebird
+        items:
+        - key: kube_config
+          path: config
+    - name: app-config
+      secret:
+        secretName: firebird
+        items:
+        - key: app_config.json
+          path: config.json

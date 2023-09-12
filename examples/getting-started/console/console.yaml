@@ -18,7 +18,13 @@ spec:
       containers:
       - name: firebird-console
         image: iad.ocir.io/idrnu3akjpv5/firebird-console:latest
-        command: ["fbconsole", "runserver", "0.0.0.0:8000"]
+        # command: ["fbconsole", "runserver", "0.0.0.0:8000"]
+        command: ["/bin/sleep", "infinity"]
+        env:
+        - name: CONSOLE_URI_BASE
+          value: "/streaming/console"
+        - name: CSRF_TRUSTED_ORIGINS
+          value: https://beta-services.appoci.oraclecorp.com
         ports:
         - containerPort: 8000
         volumeMounts:

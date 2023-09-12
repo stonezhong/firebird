@@ -32,7 +32,7 @@ class GlobalHeader extends React.Component {
             <Container fluid>
                 <Navbar.Brand href="#">
                     <img
-                        src="/static/images/logo.jpeg"
+                        src={`${this.props.console_uri_base}/static/images/logo.jpeg`}
                         alt="Logo"
                         className="d-inline-block align-top"
                     />
@@ -45,7 +45,7 @@ class GlobalHeader extends React.Component {
                             !this.props.current_user.is_authenticated && 
                             <Nav.Link 
                                 eventKey="login" 
-                                href="/ui/login"
+                                href={`${this.props.console_uri_base}/ui/login`}
                             >Login</Nav.Link>
                         }
                         {/* { 
@@ -64,7 +64,7 @@ class GlobalHeader extends React.Component {
                                 title={this.props.current_user.username} 
                                 variant="light"
                             >
-                                <Dropdown.Item href="/accounts/logout">Logout</Dropdown.Item>
+                                <Dropdown.Item href={`${this.props.console_uri_base}/accounts/logout`}>Logout</Dropdown.Item>
                             </DropdownButton>
                         </Nav>   
                     }

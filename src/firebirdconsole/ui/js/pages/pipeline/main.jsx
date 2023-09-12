@@ -38,7 +38,7 @@ class PipelineApplicationPage extends React.Component {
 
     refresh = async () => {
         try {
-            const pipeline = await get_pipeline(this.props.pipeline_id);
+            const pipeline = await get_pipeline(this.props.console_uri_base, this.props.pipeline_id);
             await setStateAsync(this, pipeline)
         }
         catch (error) {
@@ -109,7 +109,7 @@ class PipelineApplicationPage extends React.Component {
                             size="sm"
                             onClick={async (event) => {
                                 try {
-                                    await start_pipeline(this.props.pipeline_id, this.props.csrf_token);
+                                    await start_pipeline(this.props.console_uri_base, this.props.pipeline_id, this.props.csrf_token);
                                     await this.refresh();
                                 }
                                 catch (resp) {
@@ -121,7 +121,7 @@ class PipelineApplicationPage extends React.Component {
                             size="sm"
                             onClick={async (event) => {
                                 try {
-                                    await stop_pipeline(this.props.pipeline_id, this.props.csrf_token);
+                                    await stop_pipeline(this.props.console_uri_base, this.props.pipeline_id, this.props.csrf_token);
                                     await this.refresh();
                                 }
                                 catch (resp) {
@@ -253,6 +253,7 @@ $(async function() {
     const page = new ApplicationPage();
     ReactDOM.render(
         <ApplicationContainer
+            console_uri_base={page.console_uri_base}
             current_user={page.current_user}
             csrf_token={page.csrf_token}
             init_menu_key={page.init_menu_key}

@@ -29,11 +29,17 @@ kind: Service
 metadata:
   name: rabbitmq
   namespace: firebird
+  annotations:
+    oci.oraclecloud.com/load-balancer-type: "lb"
+    service.beta.kubernetes.io/oci-load-balancer-internal: "true"
 spec:
+  type: LoadBalancer
   selector: 
     app:  rabbitmq
   ports:
   - name: tcp-5672
-    protocol: TCP
     port: 5672
     targetPort: 5672
+  - name: tcp-15672
+    port: 80
+    targetPort: 15672

@@ -7,7 +7,7 @@
     <meta name="viewpoint" content="with=device, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Firebird - {{ sub_title }}</title>
-    <link rel="shortcut icon" href="/static/images/logo.jpeg">
+    <link rel="shortcut icon" href="{{console_uri_base}}/static/images/logo.jpeg">
 
     {% if ENV_enable_js_debug %}
         <link rel="stylesheet" href="https://unpkg.com/bootstrap@5.2.3/dist/css/bootstrap.css">
@@ -48,7 +48,7 @@
         <script src="https://code.jquery.com/ui/1.13.0/jquery-ui.min.js"></script>
     {% endif %}
 
-
+    <meta name="console_uri_base" content="{{ console_uri_base }}">
     <meta name="csrf" content="{{ csrf_token }}">
     <meta name="user" content="{{user|user_to_json}}">
     {% if app_context %}

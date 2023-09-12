@@ -1,8 +1,16 @@
 from django.urls import path
 from . import views
 from .views import apis
+from firebird.core_apis import CoreAPIs
+from firebird.libs.k8 import K8Accessor
+from django.conf import settings
 
-pipelines = apis.PipelinesAPI()
+pipelines = apis.PipelinesAPI(
+    CoreAPIs(
+        zk_config=settings.FIREBIRD_CONFIG['zookeeper'],
+        k8_accessor=K8Accessor()
+    )
+)
 
 urlpatterns = [
     path('', views.home, name='home'),
