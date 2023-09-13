@@ -2,7 +2,7 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: firebird-pipeline--{{pipeline_id}}--{{generator_id}}
+  name: {{pipeline_id}}--{{generator_id}}
   namespace: {{pipeline_namespace_name}}
   labels:
     app: firebird-stream-executor
@@ -26,7 +26,7 @@ spec:
         generator: {{generator_id}}
     spec:
       containers:
-      - name: firebird-pipeline--{{pipeline_id}}--{{generator_id}}
+      - name: {{pipeline_id}}--{{generator_id}}
         image: {{pipeline_image_name}}
         command:
           - python
@@ -53,7 +53,7 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: firebird-pipeline--{{pipeline_id}}
+  name: {{pipeline_id}}
   namespace: {{pipeline_namespace_name}}
   labels:
     app: firebird-stream-executor
@@ -74,7 +74,7 @@ spec:
         pipeline: {{pipeline_id}}
     spec:
       containers:
-      - name: firebird-pipeline--{{pipeline_id}}
+      - name: {{pipeline_id}}
         image: {{pipeline_image_name}}
         command:
           - python

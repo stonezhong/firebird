@@ -8,6 +8,7 @@
     * [Environment Variables](#environment-variables)
         * [`CONSOLE_URI_BASE`](#console_uri_base)
         * [`CSRF_TRUSTED_ORIGINS`](#csrf_trusted_origins)
+    * [Initialize Firebird Console Database](#initialize-firebird-console-database)
     * [Start Firebird Console](#start-firebird-console)
 * [Common Commands](#common-commands)
     * [Register Pipeline](#register-a-pipeline)
@@ -68,6 +69,11 @@ export CONSOLE_URI_BASE=/streaming/console
 ```bash
 # Example
 export CSRF_TRUSTED_ORIGINS=https://myserver.com
+```
+
+## Initialize Firebird Console Database
+```bash
+fbconsole migrate
 ```
 
 ## Start Firebird Console

@@ -136,10 +136,10 @@ class CoreAPIs:
                 raise CoreAPIInvalidArguments(f"Pipeline(id={id}) is not running!")
 
             for generator_id in get_generator_ids(pipeline):
-                name = f"firebird-pipeline--{id}--{generator_id}"
+                name = f"{id}--{generator_id}"
                 self.k8_accessor.delete_statefulset(namespace=pipeline["namespace_name"], name=name)
 
-            name = f"firebird-pipeline--{id}"
+            name = f"{id}"
             self.k8_accessor.delete_deployment(namespace=pipeline["namespace_name"], name=name)
 
             error = db.set_pipeline_is_running(id, False)
