@@ -19,6 +19,16 @@ import {DlgBoxAgent, DialogBoxStackProvider} from '/components/generic/dialogbox
 
 import './main.scss';
 
+function findOwningNode(element) {
+    let currentElement;
+    for (currentElement = element; currentElement!=null; currentElement=currentElement.parentNode) {
+        if (currentElement.tagName === 'g' && currentElement.getAttribute("class")==="node") {
+            return currentElement.getElementsByTagName("title")[0].textContent
+        }
+    }
+    return null;
+}
+
 /*********************************************************************************
  * Purpose: Page to view an application
  *
@@ -76,7 +86,10 @@ class PipelineApplicationPage extends React.Component {
                         dataField: "connectedPorts",
                         text: "Connected Ports",
                         isDummyField: true,
-                        formatter: (cell, row) => row.connected_ports.join(',')
+                        // formatter: (cell, row) => row.connected_ports.join(',')
+                        formatter: (cell, row) => <>
+                            {row.connected_ports.map(port => <span id={port}>{port}<br/></span>)}
+                        </>
                     },
                 ]}
                 classes="table-sm executor-table"
@@ -169,12 +182,14 @@ class PipelineApplicationPage extends React.Component {
                         dangerouslySetInnerHTML={{ __html: this.state.diagramDirection==='lr'?this.state.svg_lr: this.state.svg_tb}} 
                         className='svg-wrapper-div'
                         onClick={event => {
-                            const nodeId = event.target.parentNode.parentNode.parentNode.getElementsByTagName("title")[0].textContent;
+                            const nodeId = findOwningNode(event.target);
+                            if (_.isNull(nodeId)) {
+                                return
+                            }
+
                             event.stopPropagation();
                             event.preventDefault();
-
                             const node = _.find(this.state.pipeline.info.nodes, {'id': nodeId});
-
                             dbsRef.current.openDialog({
                                 title: node.title,
                                 size: "md",

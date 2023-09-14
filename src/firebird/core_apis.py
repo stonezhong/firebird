@@ -4,6 +4,7 @@ import tempfile
 import importlib
 import graphviz
 import xml.dom.minidom
+import uuid
 
 from firebird import zkdb, ZKError
 from firebird.libs.k8 import K8Accessor
@@ -20,7 +21,7 @@ class CoreAPIFailed(CoreAPIException):
 
 def get_generator_ids(pipeline):
     generator_ids = []
-    for node in pipeline["info"]["nodes"]:
+    for node in pipeline["nodes"]:
         input_port_count = 0
         for port in node["ports"]:
             if port["type"] == "INPUT": # hack, better use PortType enum
@@ -105,18 +106,19 @@ class CoreAPIs:
 
             if pipeline['is_running']:
                 raise CoreAPIInvalidArguments(f"Pipeline(id={id}) is already running!")
-        
+
             self.k8_accessor.apply(
                 template_name="pipeline.yaml",
                 context={
+                    "k8s_state": pipeline['k8s_state'],
                     "pipeline_namespace_name": pipeline["namespace_name"],
                     "pipeline_image_name": pipeline["image_name"],
                     "pipeline_id": id,
                     "replicas": replicas,
-                    "generator_ids": get_generator_ids(pipeline)
+                    "generator_ids": get_generator_ids(pipeline["info"])
                 }
             )
-            error = db.set_pipeline_is_running(id, True)
+            error = db.set_pipeline_is_running(id, is_running=True)
             if error != ZKError.OK:
                 raise CoreAPIFailed(f"Unable to change pipeline(id={id}) to running status, error is {error}")
 
@@ -135,14 +137,13 @@ class CoreAPIs:
             if not pipeline['is_running']:
                 raise CoreAPIInvalidArguments(f"Pipeline(id={id}) is not running!")
 
-            for generator_id in get_generator_ids(pipeline):
-                name = f"{id}--{generator_id}"
-                self.k8_accessor.delete_statefulset(namespace=pipeline["namespace_name"], name=name)
+            for _, statefulset_name in pipeline['k8s_state']["generators"].items():
+                self.k8_accessor.delete_statefulset(namespace=pipeline["namespace_name"], name=statefulset_name)
 
-            name = f"{id}"
+            name = pipeline['k8s_state']["deployment_name"]
             self.k8_accessor.delete_deployment(namespace=pipeline["namespace_name"], name=name)
 
-            error = db.set_pipeline_is_running(id, False)
+            error = db.set_pipeline_is_running(id, is_running=False)
             if error != ZKError.OK:
                 raise CoreAPIFailed(f"Unable to change pipeline to stopped status, error is {error}")
 
@@ -157,6 +158,17 @@ class CoreAPIs:
         pipeline = importlib.import_module(pipeline_module_name).get_pipeline(None)
         pipeline_info = pipeline.to_json()
 
+        # we will assign k8s statefulset name and deployment name, we do not want to use
+        # pipeline name and generator id as name since k8s's name has limitation
+        # only 63 chars and no upper case characters
+        k8s_state = {
+            "generators": {},
+            "deployment_name": str(uuid.uuid4())
+        }
+        generator_ids = get_generator_ids(pipeline_info)
+        for generator_id in generator_ids:
+            k8s_state["generators"][generator_id] = str(uuid.uuid4())
+
         mq = RabbitMQ(
             connection = get_connection(**self.rabbitmq_config),
             topic = pipeline.id
@@ -170,7 +182,8 @@ class CoreAPIs:
                 pipeline_namespace_name, 
                 pipeline_image_name, 
                 pipeline_module_name, 
-                pipeline_info
+                pipeline_info,
+                k8s_state
             )
             if error != ZKError.OK:
                 raise CoreAPIFailed(f"register pipeline failed, error is: {error}")

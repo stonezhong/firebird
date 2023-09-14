@@ -13,4 +13,7 @@ div.svg-wrapper-div {
     background-color: lightgrey;
     text-align: center;
     padding: 8px;
+    overflow: auto;
+    width: 100%;
+    min-height: 800px;
 }

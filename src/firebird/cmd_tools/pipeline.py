@@ -125,6 +125,13 @@ def main():
             print(f"    image    : {pipeline['image_name']}")
             print(f"    module   : {pipeline['module']}")
             print(f"    running  : {'Yes' if pipeline['is_running'] else 'No'}")
+            k8s_state = pipeline['k8s_state']
+            print(f"    Kubernetes")
+            for generator_id, statefulset_name in k8s_state.get("generators", {}).items():
+                print(f"        {statefulset_name}: {generator_id}")
+            deployment_name = k8s_state.get('deployment_name')
+            if deployment_name:
+                print(f"        {deployment_name}: puller")
             if len(pipeline["executors"]) == 0:
                 print("    executors: None")
             else:
