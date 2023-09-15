@@ -41,17 +41,17 @@ class HomeApplicationPage extends React.Component {
                 <Row>
                     <Col>
                         <BootstrapTable
-                            keyField="info.id"
+                            keyField="pipeline_info.id"
                             data={this.state.pipelines}
                             filter={ filterFactory() }
                             bordered={false}
                             bootstrap4
                             columns={[
                                 {
-                                    dataField: "info.id",
+                                    dataField: "pipeline_info.id",
                                     text: "ID",
                                     isDummyField: true,
-                                    formatter: (cellContent, pipeline) => <a href={`pipelines/${pipeline.info.id}`} target="_blank">{pipeline.info.id}</a>,
+                                    formatter: (cellContent, pipeline) => <a href={`pipelines/${pipeline.pipeline_info.id}`} target="_blank">{pipeline.pipeline_info.id}</a>,
                                     headerStyle: {
                                         width: "350px",
                                     },
@@ -87,7 +87,7 @@ class HomeApplicationPage extends React.Component {
                                     },
                                 },
                                 {
-                                    dataField: "info.description",
+                                    dataField: "pipeline_info.description",
                                     text: "Description",
                                 },
                             ]}

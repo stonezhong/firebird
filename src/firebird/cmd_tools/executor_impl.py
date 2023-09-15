@@ -14,12 +14,11 @@ import logging
 ###################################################################
 logger = logging.getLogger(__name__)
 
-import sys
 import importlib
 import signal
-from multiprocessing import Process, Value
+from multiprocessing import Value
 from uuid import uuid4
-from firebird import zkdb, Node, ZKError
+from firebird import zkdb, Node
 
 from firebird.rabbitmq import get_connection, RabbitMQ
 
@@ -41,6 +40,7 @@ def executor_main(config:dict, pipeline_module_name:str, pipeline_id:str, node: 
         connection = get_connection(**config["rabbitmq"]),
         topic = pipeline_id
     )
+    # Each pipeline module has a method get_pipeline() wich returns a Pipeline instance
     pipeline = importlib.import_module(pipeline_module_name).get_pipeline(mq)
     
     if node is None:
@@ -51,6 +51,7 @@ def executor_main(config:dict, pipeline_module_name:str, pipeline_id:str, node: 
         generator = pipeline[node.id]
         generator.pump(quit_requested)
 
+# This is the main entry for pipeline pod
 def execute_pipeline(
     config:dict, 
     *, 
@@ -62,13 +63,9 @@ def execute_pipeline(
     zk_config = config['zookeeper']
 
     with zkdb(**zk_config) as db:
-        error, pipeline = db.get_pipeline(pipeline_id)
-        if error != ZKError.OK:
-            logger.info(f"execute_pipeline: uable to get pipeline {pipeline_id}, error is {error}!")
-            logger.info(f"execute_pipeline: exit")
-            sys.exit(1)
+        pipeline_registry = db.get_pipeline(pipeline_id)
 
-        pipeline_module_name = pipeline['module']
+        pipeline_module_name = pipeline_registry.module
         logger.info(f"execute_pipeline: pipeline_module_name={pipeline_module_name}")
 
         # try to import the pipeline
@@ -77,23 +74,16 @@ def execute_pipeline(
 
         executor_id = str(uuid4())
         logger.info(f"execute_pipeline: executor_id={executor_id}")
-        error = db.register_executor(pipeline_id, executor_id, generator_id)
-        if error != ZKError.OK:
-            logger.info(f"execute_pipeline: uable to register executor {executor_id}, error is {error}!")
-            logger.info(f"execute_pipeline: exit")
-            sys.exit(1)
-
+        db.register_executor(pipeline_id, executor_id, generator_id)
         logger.info(f"execute_pipeline: executor {executor_id} registered")
 
     try:
+        # if this is for puller, then generator_id is None
         node = None if generator_id is None else pipeline[generator_id]
         executor_main(config, pipeline_module_name, pipeline_id, node)
     finally:
         with zkdb(**zk_config) as db:
-            error = db.unregister_executor(pipeline_id, executor_id)
-            if error == ZKError.OK:
-                logger.info(f"execute_pipeline: executor {executor_id} unregistered")
-            else:
-                logger.info(f"execute_pipeline: uable to unregister executor {executor_id}, error is {error}!")
+            db.unregister_executor(pipeline_id, executor_id)
+            logger.info(f"execute_pipeline: executor {executor_id} unregistered")
             logger.info(f"execute_pipeline: exit")
 

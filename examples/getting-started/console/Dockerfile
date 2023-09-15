@@ -8,6 +8,8 @@ RUN apk update \
 
 WORKDIR /usr/src/app
 COPY src ./
+COPY start-web.sh ./
+RUN chmod +x ./start-web.sh
 
 RUN pip config set global.disable-pip-version-check true
 RUN pip install pip setuptools --upgrade

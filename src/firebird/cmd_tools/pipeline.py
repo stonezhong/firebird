@@ -118,30 +118,28 @@ def main():
         check_args(args, ["pipeline_id"])
         core_apis.unregister_pipeline(args.pipeline_id)
     elif action == "list":
-        ret = core_apis.list_pipelines()
-        for pipeline in ret["pipelines"]:
-            print(f"{pipeline['info']['id']}:")
-            print(f"    namespace: {pipeline['namespace_name']}")
-            print(f"    image    : {pipeline['image_name']}")
-            print(f"    module   : {pipeline['module']}")
-            print(f"    running  : {'Yes' if pipeline['is_running'] else 'No'}")
-            k8s_state = pipeline['k8s_state']
+        for pipeline_registry in core_apis.list_pipelines():
+            print(f"{pipeline_registry.pipeline_info.id}:")
+            print(f"    namespace: {pipeline_registry.namespace_name}")
+            print(f"    image    : {pipeline_registry.image_name}")
+            print(f"    module   : {pipeline_registry.module}")
+            print(f"    running  : {'Yes' if pipeline_registry.is_running else 'No'}")
+            k8s_state = pipeline_registry.k8s_state
             print(f"    Kubernetes")
-            for generator_id, statefulset_name in k8s_state.get("generators", {}).items():
+            for generator_id, statefulset_name in k8s_state.generators.items():
                 print(f"        {statefulset_name}: {generator_id}")
-            deployment_name = k8s_state.get('deployment_name')
+            deployment_name = k8s_state.deployment_name
             if deployment_name:
                 print(f"        {deployment_name}: puller")
-            if len(pipeline["executors"]) == 0:
+            if len(pipeline_registry.executors) == 0:
                 print("    executors: None")
             else:
                 print("    executors:")
-                for executor in pipeline["executors"]:
-                    executor_info = executor["info"]
-                    print(f"        {executor_info['id']}:")
-                    print(f"            start_time            = {executor_info['start_time']}")
-                    print(f"            pid                   = {executor_info['pid']}")
-                    print(f"            generator_id          = {executor_info['generator_id']}")
+                for executor in pipeline_registry.executors:
+                    print(f"        {executor.id}:")
+                    print(f"            start_time            = {executor.start_time}")
+                    print(f"            pid                   = {executor.pid}")
+                    print(f"            generator_id          = {executor.generator_id}")
     elif action == "start":
         check_args(args, ["pipeline_id"])
         core_apis.start_pipeline(args.pipeline_id)

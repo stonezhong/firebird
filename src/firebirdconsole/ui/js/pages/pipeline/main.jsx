@@ -6,6 +6,7 @@ import Row from 'react-bootstrap/Row';
 import Form from 'react-bootstrap/Form';
 import Stack from 'react-bootstrap/Stack';
 import Button from 'react-bootstrap/Button';
+import Table from 'react-bootstrap/Table';
 
 import { ApplicationContainer } from '/components/business/appbase';
 
@@ -81,14 +82,31 @@ class PipelineApplicationPage extends React.Component {
                     {
                         dataField: "type",
                         text: "Port Type",
+                        headerStyle: {
+                            width: "90px",
+                        }
                     },
                     {
                         dataField: "connectedPorts",
                         text: "Connected Ports",
                         isDummyField: true,
-                        // formatter: (cell, row) => row.connected_ports.join(',')
                         formatter: (cell, row) => <>
-                            {row.connected_ports.map(port => <span id={port}>{port}<br/></span>)}
+                            <Table>
+                                <thead>
+                                    <tr>
+                                    <th>Node ID</th>
+                                    <th>Port ID</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                {
+                                    row.connected_ports.map(connected_port => <tr key={`${connected_port.node_id}-${connected_port.port_id}`}>
+                                        <td>{connected_port.node_id}</td>
+                                        <td>{connected_port.port_id}</td>
+                                    </tr>)
+                                }
+                                </tbody>
+                            </Table>
                         </>
                     },
                 ]}
@@ -104,13 +122,13 @@ class PipelineApplicationPage extends React.Component {
             <>
                 <Row>
                     <Col>
-                        <h1>Pipeline -- {this.state.pipeline && this.state.pipeline.info.title}</h1>
+                        <h1>Pipeline -- {this.state.pipeline && this.state.pipeline.pipeline_info.title}</h1>
                     </Col>
                 </Row>
                 <Row>
                     <Col xs={6}>
                         <table>
-                            <tr><td>ID</td><td class="ps-2">{this.state.pipeline && this.state.pipeline.info.id}</td></tr>
+                            <tr><td>ID</td><td class="ps-2">{this.state.pipeline && this.state.pipeline.pipeline_info.id}</td></tr>
                             <tr><td>Namespace</td><td class="ps-2">{this.state.pipeline && this.state.pipeline.namespace_name}</td></tr>
                             <tr><td>Image</td><td class="ps-2">{this.state.pipeline && this.state.pipeline.image_name}</td></tr>
                             <tr><td>Module</td><td class="ps-2">{this.state.pipeline && this.state.pipeline.module}</td></tr>
@@ -151,7 +169,7 @@ class PipelineApplicationPage extends React.Component {
                 </Row>
                 <Row>
                     <Col>
-                        {this.state.pipeline && this.state.pipeline.info.description}
+                        {this.state.pipeline && this.state.pipeline.pipeline_info.description}
                     </Col>
                 </Row>
 
@@ -189,7 +207,7 @@ class PipelineApplicationPage extends React.Component {
 
                             event.stopPropagation();
                             event.preventDefault();
-                            const node = _.find(this.state.pipeline.info.nodes, {'id': nodeId});
+                            const node = _.find(this.state.pipeline.pipeline_info.nodes, {'id': nodeId});
                             dbsRef.current.openDialog({
                                 title: node.title,
                                 size: "md",
@@ -201,21 +219,21 @@ class PipelineApplicationPage extends React.Component {
 
                 <Row><Col><h2>Executors</h2></Col></Row>
                 {this.state.pipeline && <BootstrapTable
-                    keyField="info.id"
+                    keyField="id"
                     data={this.state.pipeline.executors}
                     filter={ filterFactory() }
                     bordered={false}
                     bootstrap4
                     columns={[
                         {
-                            dataField: "info.id",
+                            dataField: "id",
                             text: "Executor ID",
                             headerStyle: {
                                 width: "320px"
                             }
                         },
                         {
-                            dataField: "info.generator_id",
+                            dataField: "generator_id",
                             text: "Generator",
                             headerStyle: {
                                 width: "120px"
@@ -226,7 +244,7 @@ class PipelineApplicationPage extends React.Component {
                             }
                         },
                         {
-                            dataField: "info.pid",
+                            dataField: "pid",
                             text: "PID",
                             headerStyle: {
                                 width: "120px"
@@ -237,7 +255,7 @@ class PipelineApplicationPage extends React.Component {
                             }
                         },
                         {
-                            dataField: "info.start_time",
+                            dataField: "start_time",
                             text: "Start Time (UTC)",
                             headerStyle: {
                                 width: "200px"
