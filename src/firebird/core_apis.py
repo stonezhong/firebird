@@ -136,3 +136,9 @@ class CoreAPIs:
         with zkdb(**self.zk_config) as db:
             db.unregister_pipeline(id)
 
+        mq = RabbitMQ(
+            connection = get_connection(**self.rabbitmq_config),
+            topic = id
+        )
+        # delete queues
+        mq.delete_queues()

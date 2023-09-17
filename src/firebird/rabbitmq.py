@@ -16,6 +16,7 @@ class RabbitMQ:
     def __init__(self, *, connection, topic):
         self.topic = topic
         self.error_topic = f"{topic}-error"
+        self.critical_topic = f"{topic}-critical"
 
         self.stop_requested = False  # has the client asked to stop consuming data?
         self.connection = connection
@@ -36,6 +37,12 @@ class RabbitMQ:
     def initialize(self):
         self.channel.queue_declare(queue=self.topic, durable=True)
         self.channel.queue_declare(queue=self.error_topic, durable=True)
+        self.channel.queue_declare(queue=self.critical_topic, durable=True)
+    
+    def delete_queues(self):
+        self.channel.queue_delete(queue=self.topic)
+        self.channel.queue_delete(queue=self.error_topic)
+        self.channel.queue_delete(queue=self.critical_topic)
 
     def produce(self, json_body):
         body = json.dumps(json_body).encode('utf-8')
