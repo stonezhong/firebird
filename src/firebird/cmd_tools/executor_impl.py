@@ -32,7 +32,13 @@ def __request_executor_shutdown(signal_umber, frame):
     logger.info("executor: Got SIGTERM")
 
 
-def executor_main(config:dict, pipeline_module_name:str, pipeline_id:str, node: Optional[Node]):
+def executor_main(
+    config:dict, 
+    pipeline_module_name:str, 
+    pipeline_id:str, 
+    node: Optional[Node], 
+    count: Optional[int]=None
+):
     signal.signal(signal.SIGTERM, __request_executor_shutdown)  # regular kill command
     quit_requested = __EXECUTOR_CONTEXT['quit_requested']
 
@@ -45,18 +51,19 @@ def executor_main(config:dict, pipeline_module_name:str, pipeline_id:str, node: 
     
     if node is None:
         # for puller
-        pipeline.message_loop(quit_requested)
+        pipeline.message_loop(quit_requested, count=count)
     else:
         # for generator
         generator = pipeline[node.id]
-        generator.pump(quit_requested)
+        generator.pump(quit_requested, count=count)
 
 # This is the main entry for pipeline pod
 def execute_pipeline(
     config:dict, 
     *, 
     pipeline_id:str, 
-    generator_id:Optional[str]
+    generator_id:Optional[str],
+    count:Optional[int]=None
 ):
     logger.info(f"execute_pipeline: enter")
     logger.info(f"execute_pipeline: pipeline_id={pipeline_id}, generator_id={generator_id}")
@@ -80,7 +87,7 @@ def execute_pipeline(
     try:
         # if this is for puller, then generator_id is None
         node = None if generator_id is None else pipeline[generator_id]
-        executor_main(config, pipeline_module_name, pipeline_id, node)
+        executor_main(config, pipeline_module_name, pipeline_id, node, count=count)
     finally:
         with zkdb(**zk_config) as db:
             db.unregister_executor(pipeline_id, executor_id)

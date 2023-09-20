@@ -23,6 +23,9 @@ def main():
     parser.add_argument(
         "-gid", "--generator-id", type=str, help="Generator ID"
     )
+    parser.add_argument(
+        "-c", "--count", type=int, help="Specify maxium message you want puller or generator to process"
+    )
     args = parser.parse_args()
 
     # config log
@@ -78,7 +81,8 @@ def main():
     impl.execute_pipeline(
         config, 
         pipeline_id=args.pipeline_id, 
-        generator_id=args.generator_id
+        generator_id=args.generator_id,
+        count=args.count
     )
 
 

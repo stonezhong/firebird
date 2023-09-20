@@ -72,12 +72,17 @@ class RabbitMQ:
             )
         )
     
-    def consume(self, on_message, quit_requested):
+    def consume(self, on_message, quit_requested, count=None):
+        # count: it not none, the consumer will quit after processing coount messages
         # on_message: called when there is a message coming
+        message_consumed = 0
         for method_frame, properties, body in self.channel.consume(
             self.topic, auto_ack=False, exclusive=False,
             inactivity_timeout = 10
         ):
+            if count is not None and message_consumed >= count:
+                break
+            
             if quit_requested.value:
                 # we are not acking the message so it will not be lost
                 break
@@ -95,4 +100,4 @@ class RabbitMQ:
                 self.produce_error(json_body, e)
             finally:
                 self.channel.basic_ack(method_frame.delivery_tag)
-
+            message_consumed += 1

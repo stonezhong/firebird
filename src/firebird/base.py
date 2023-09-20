@@ -412,7 +412,7 @@ class Generator(Node):
         raise PipelineBadArgument("Generator cannot process data")
 
     @abstractmethod
-    def pump(self, quit_requested: Synchronized):
+    def pump(self, quit_requested: Synchronized, count:Optional[int]=None):
         """
         Let the source to collect data and emit data
 
@@ -553,8 +553,8 @@ class Pipeline:
             nodes=[node.get_info() for _, node in self._node_dict.items()]
         )
 
-    def message_loop(self, quit_requested: Synchronized):
-        self.mq.consume(self.on_message, quit_requested)
+    def message_loop(self, quit_requested: Synchronized, count:Optional[int]=None):
+        self.mq.consume(self.on_message, quit_requested, count=count)
     
     def on_message(self, envelope):
         node = self._node_dict[envelope['to']['node']]
