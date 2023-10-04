@@ -2,7 +2,7 @@ from typing import Dict, Callable, Any
 import tempfile
 import os
 from kubernetes import client,config, utils
-from firebird.libs import render_template
+from firebird.libs import render_template, render_template_by_content
 
 class K8Accessor:
     # To access kubernetes, you must have
@@ -44,6 +44,21 @@ class K8Accessor:
             tf.write(to_apply)
         try:
             print("Use following deployment:")
+            print(os.linesep)
+            print(os.linesep)
+            print(to_apply)
+            print(os.linesep)
+            print(os.linesep)
+            utils.create_from_yaml(self.client, tf.name, verbose=True)
+        finally:
+            os.remove(tf.name)
+
+    def apply_by_content(self, *, title, template_content:str, context: Any) -> None:
+        to_apply = render_template_by_content(template_content, context)
+        with tempfile.NamedTemporaryFile(mode='wt', delete=False) as tf:
+            tf.write(to_apply)
+        try:
+            print(f"Apply for {title}:")
             print(os.linesep)
             print(os.linesep)
             print(to_apply)

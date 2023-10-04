@@ -124,13 +124,7 @@ def main():
             print(f"    image    : {pipeline_registry.image_name}")
             print(f"    module   : {pipeline_registry.module}")
             print(f"    running  : {'Yes' if pipeline_registry.is_running else 'No'}")
-            k8s_state = pipeline_registry.k8s_state
             print(f"    Kubernetes")
-            for generator_id, statefulset_name in k8s_state.generators.items():
-                print(f"        {statefulset_name}: {generator_id}")
-            deployment_name = k8s_state.deployment_name
-            if deployment_name:
-                print(f"        {deployment_name}: puller")
             if len(pipeline_registry.executors) == 0:
                 print("    executors: None")
             else:
@@ -142,7 +136,7 @@ def main():
                     print(f"            generator_id          = {executor.generator_id}")
     elif action == "start":
         check_args(args, ["pipeline_id"])
-        core_apis.start_pipeline(args.pipeline_id)
+        core_apis.start_pipeline(args.pipeline_id, replicas=args.replicas)
     elif action == "stop":
         check_args(args, ["pipeline_id"])
         core_apis.stop_pipeline(args.pipeline_id)

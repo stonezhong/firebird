@@ -21,3 +21,17 @@ def render_template(template_name:str, context:dict={})->str:
         template = JINJA_ENV.from_string(content)
         return template.render(context)
 
+
+def render_template_by_content(template_content:str, context:dict={})->str:
+    """Render Jinja template with context
+
+    Args:
+        template_content (str): Template content
+        context (dict): A dict represent the rendering context
+
+    Returns:
+        str: Rendered template
+    """
+    template = JINJA_ENV.from_string(template_content)
+    return template.render(context)
+

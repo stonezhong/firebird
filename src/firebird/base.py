@@ -103,6 +103,38 @@ class NodeInfo:
             ports=[PortInfo.from_json(item) for item in payload["ports"]]
         )
 
+class StartupResource:
+    title:str
+    yaml:str
+
+    def __init__(self, *, title:str, yaml:str):
+        self.title = title
+        self.yaml = yaml
+    
+    def to_json(self):
+        return {"title": self.title, "yaml": self.yaml}
+    
+    @classmethod
+    def from_json(cls, payload):
+        return cls(title=payload["title"], yaml=payload["yaml"])
+
+class ShutdownResource:
+    type: str
+    name: str
+    grace_period: Optional[int]
+
+    def __init__(self, *, type:str, name:str, grace_period:Optional[int]=None):
+        self.type = type
+        self.name = name
+        self.grace_period = grace_period
+    
+    def to_json(self):
+        return {"type": self.type, "name": self.name, "grace_period": self.grace_period}
+
+    @classmethod
+    def from_json(cls, payload):
+        return cls(type=payload["type"], name=payload["name"], grace_period=payload["grace_period"])
+
 class PipelineInfo:
     id:str
     title:str
@@ -135,29 +167,14 @@ class PipelineInfo:
             nodes=[NodeInfo.from_json(item) for item in payload["nodes"]]
         )
 
-class K8SState:
-    deployment_name:str       # k8s deployment name, for puller
-    generators:Dict[str, str] # for all generator statefulsets
-                              # ket is generator_id, value is the statefulset name
-    
-    def __init__(self, *, deployment_name:str, generators:Dict[str, str]):
-        self.deployment_name = deployment_name
-        self.generators = generators
-    
-    def to_json(self):
-        return {"deployment_name": self.deployment_name, "generators": self.generators}
-    
-    @classmethod
-    def from_json(cls, payload):
-        return cls(deployment_name=payload["deployment_name"], generators=payload["generators"])
-
 class PipelineRegistry:
     pipeline_info:PipelineInfo
     module:str
     namespace_name:str
     image_name:str
     is_running:bool
-    k8s_state:K8SState
+    startup_resources:List[StartupResource]
+    shutdown_resources:List[ShutdownResource]
     executors:List["Executor"]
 
     def __init__(
@@ -168,7 +185,8 @@ class PipelineRegistry:
         namespace_name:str, 
         image_name:str, 
         is_running:bool, 
-        k8s_state:K8SState,
+        startup_resources:List[StartupResource],
+        shutdown_resources:List[ShutdownResource],
         executors:List["Executor"]=[]
     ):
         self.pipeline_info = pipeline_info
@@ -176,7 +194,8 @@ class PipelineRegistry:
         self.namespace_name = namespace_name
         self.image_name = image_name
         self.is_running = is_running
-        self.k8s_state = k8s_state
+        self.startup_resources = startup_resources
+        self.shutdown_resources = shutdown_resources       
         self.executors = executors
     
     def to_json(self):
@@ -186,7 +205,8 @@ class PipelineRegistry:
             "namespace_name": self.namespace_name,
             "image_name": self.image_name,
             "is_running": self.is_running,
-            "k8s_state": self.k8s_state.to_json(),
+            "startup_resources": [startup_resource.to_json() for startup_resource in self.startup_resources],
+            "shutdown_resources": [shutdown_resource.to_json() for shutdown_resource in self.shutdown_resources],
             "executors": [executor.to_json() for executor in self.executors]
         }
 
@@ -197,7 +217,8 @@ class PipelineRegistry:
             namespace_name=payload["namespace_name"],
             image_name=payload["image_name"],
             is_running=payload["image_name"],
-            k8s_state=K8SState.from_json(payload["k8s_state"]),
+            startup_resources=[StartupResource.from_json(item) for item in payload["startup_resources"]],
+            shutdown_resources=[ShutdownResource.from_json(item) for item in payload["shutdown_resources"]],
             executors=[Executor.from_json(item) for item in payload["executors"]]
         )
 
@@ -531,7 +552,7 @@ class Port:
             })
     
     
-class Pipeline:
+class Pipeline(ABC):
     id:str
     title:str
     description:str
@@ -545,6 +566,10 @@ class Pipeline:
         self.mq:RabbitMQ  = mq
         self._node_dict:Dict[str, Node] = {}
     
+    @abstractmethod
+    def get_resources(self) -> Tuple[List[StartupResource], List[ShutdownResource]]:
+        pass
+
     def get_info(self):
         return PipelineInfo(
             id=self.id,

@@ -5,7 +5,7 @@ import os
 from datetime import datetime
 from contextlib import contextmanager
 from kazoo.client import KazooClient
-from firebird.base import PipelineRegistry, Executor, PipelineInfo, K8SState
+from firebird.base import PipelineRegistry, Executor, PipelineInfo, StartupResource, ShutdownResource
 
 @contextmanager
 def zkdb(**kwargs):
@@ -95,7 +95,18 @@ class ZKDatabase:
         self.create_str(f"{pipeline_path}/namespace_name", pipeline_registry.namespace_name)
         self.create_str(f"{pipeline_path}/image_name", pipeline_registry.image_name)
         self.create_boolean(f"{pipeline_path}/is_running", False)
-        self.create_json(f"{pipeline_path}/k8s_state", pipeline_registry.k8s_state.to_json())
+        self.create_json(
+            f"{pipeline_path}/startup_resources", 
+            [
+                startup_resource.to_json() for startup_resource in pipeline_registry.startup_resources
+            ]
+        )
+        self.create_json(
+            f"{pipeline_path}/shutdown_resources", 
+            [
+                shutdown_resource.to_json() for shutdown_resource in pipeline_registry.shutdown_resources
+            ]
+        )
 
 
     def unregister_pipeline(self, pipeline_id:str):
@@ -149,7 +160,8 @@ class ZKDatabase:
         namespace_name  = self.get_str(f"{pipeline_path}/namespace_name")
         image_name      = self.get_str(f"{pipeline_path}/image_name")
         is_running      = self.get_boolean(f"{pipeline_path}/is_running")
-        k8s_state       = K8SState.from_json(self.get_json(f"{pipeline_path}/k8s_state"))
+        startup_resources  = [StartupResource.from_json(item) for item in self.get_json(f"{pipeline_path}/startup_resources")]
+        shutdown_resources = [ShutdownResource.from_json(item) for item in self.get_json(f"{pipeline_path}/shutdown_resources")]
 
         executor_ids_path = f"/pipelines/{pipeline_id}/executors"
         executors = []
@@ -164,8 +176,9 @@ class ZKDatabase:
             namespace_name=namespace_name,
             image_name=image_name,
             is_running=is_running,
-            k8s_state=k8s_state,
-            executors=executors
+            executors=executors,
+            startup_resources=startup_resources,
+            shutdown_resources=shutdown_resources
         )
 
     def register_executor(self, pipeline_id:str, executor_id:str, generator_id: Optional[str]):

@@ -7,7 +7,7 @@ from firebird import zkdb
 from firebird.libs.k8 import K8Accessor
 from firebird.rabbitmq import get_connection, RabbitMQ
 
-from firebird.base import K8SState, Pipeline, PipelineRegistry, PortType
+from firebird.base import Pipeline, PipelineRegistry, PortType, StartupResource, ShutdownResource
 
 class CoreAPIException(Exception):
     pass
@@ -41,22 +41,24 @@ class CoreAPIs:
             id (str): pipeline ID
         """
         with zkdb(**self.zk_config) as db:
-            pipeline_registry = db.get_pipeline(id)
+            pipeline_registry:PipelineRegistry = db.get_pipeline(id)
 
             if pipeline_registry.is_running:
                 raise CoreAPIInvalidArguments(f"Pipeline(id={id}) is already running!")
 
-            self.k8_accessor.apply(
-                template_name="pipeline.yaml",
-                context={
-                    "k8s_state": pipeline_registry.k8s_state.to_json(),
-                    "pipeline_namespace_name": pipeline_registry.namespace_name,
-                    "pipeline_image_name": pipeline_registry.image_name,
-                    "pipeline_id": id,
-                    "replicas": replicas,
-                    "generator_ids": [node.id for node in pipeline_registry.pipeline_info.get_generators()]
-                }
-            )
+            for startup_resource in pipeline_registry.startup_resources:
+                # TODO: replace print with logger
+                # TODO: handler failure
+                self.k8_accessor.apply_by_content(
+                    title=startup_resource.title,
+                    template_content=startup_resource.yaml,
+                    context={
+                        "namespace_name": pipeline_registry.namespace_name,
+                        "image_name": pipeline_registry.image_name,
+                        "pipeline_id": id,
+                        "replicas": replicas
+                    }
+                )
             db.set_pipeline_is_running(id, is_running=True)
 
     def stop_pipeline(self, id:str) -> None:
@@ -71,16 +73,19 @@ class CoreAPIs:
             if not pipeline_registry.is_running:
                 raise CoreAPIInvalidArguments(f"Pipeline(id={id}) is already stopped!")
 
-            for _, statefulset_name in pipeline_registry.k8s_state.generators.items():
-                self.k8_accessor.delete_statefulset(
-                    namespace=pipeline_registry.namespace_name, 
-                    name=statefulset_name
-                )
-
-            self.k8_accessor.delete_deployment(
-                namespace=pipeline_registry.namespace_name,
-                name=pipeline_registry.k8s_state.deployment_name
-            )
+            for shutdown_resource in pipeline_registry.shutdown_resources:
+                if shutdown_resource.type == "Statefulset":
+                    self.k8_accessor.delete_statefulset(
+                        namespace=pipeline_registry.namespace_name, 
+                        name=shutdown_resource.name
+                    )
+                elif shutdown_resource.type == "Deployment":
+                    self.k8_accessor.delete_deployment(
+                        namespace=pipeline_registry.namespace_name, 
+                        name=shutdown_resource.name
+                    )
+                else:
+                    raise Exception(f"Unrecognized resource type: {shutdown_resource.type}")
             db.set_pipeline_is_running(id, is_running=False)
 
     def register_pipeline(
@@ -98,16 +103,7 @@ class CoreAPIs:
         """
         pipeline:Pipeline = importlib.import_module(pipeline_module_name).get_pipeline(None)
         pipeline_info = pipeline.get_info()
-
-        # we will assign k8s statefulset name and deployment name, we do not want to use
-        # pipeline name and generator id as name since k8s's name has limitation
-        # only 63 chars and no upper case characters
-        k8s_state = K8SState(
-            deployment_name=str(uuid.uuid4()),
-            generators={}
-        )
-        for node in pipeline_info.get_generators():
-            k8s_state.generators[node.id] = str(uuid.uuid4())
+        startup_resources, shutdown_resources = pipeline.get_resources()
 
         mq = RabbitMQ(
             connection = get_connection(**self.rabbitmq_config),
@@ -123,7 +119,8 @@ class CoreAPIs:
                 namespace_name=pipeline_namespace_name,
                 image_name=pipeline_image_name,
                 is_running=False,
-                k8s_state=k8s_state
+                startup_resources=startup_resources,
+                shutdown_resources=shutdown_resources
             )
             db.register_pipeline(pipeline_registry)
 
